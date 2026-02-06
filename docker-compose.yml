@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_AGENT_API_URL=http://host.docker.internal:8000/api/v1
+      - NEXT_PUBLIC_AGENT_WS_URL=ws://host.docker.internal:8000/api/v1/chat/ws
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
