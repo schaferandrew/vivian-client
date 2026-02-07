@@ -24,12 +24,31 @@ async function fetchApi<T>(
   return response.json();
 }
 
+// Create a new chat session
+export async function createSession(): Promise<{ session_id: string; created_at: string }> {
+  const res = await fetch(`${API_URL}/chat/sessions`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error("Failed to create session");
+  }
+  return res.json();
+}
+
 // Simple chat message - returns agent response (via same-origin proxy so it works regardless of how you open the app)
-export async function sendChatMessage(message: string, webSearchEnabled: boolean = false): Promise<{ response: string; session_id?: string }> {
+export async function sendChatMessage(
+  message: string,
+  sessionId: string | null,
+  webSearchEnabled: boolean = false
+): Promise<{ response: string; session_id: string }> {
   const res = await fetch("/api/agent/chat/message", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, web_search_enabled: webSearchEnabled }),
+    body: JSON.stringify({
+      message,
+      session_id: sessionId,
+      web_search_enabled: webSearchEnabled,
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { error?: string; message?: string; detail?: string };

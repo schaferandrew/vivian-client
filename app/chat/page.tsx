@@ -1,17 +1,35 @@
 "use client";
 
+import { useEffect } from "react";
 import { ChatContainer } from "@/components/chat/ChatContainer";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatHeader } from "@/components/chat/ChatHeader";
 import { useModelStore } from "@/lib/stores/model";
+import { useChatStore } from "@/lib/stores/chat";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createSession } from "@/lib/api/client";
 
 export default function ChatPage() {
   const openRouterCreditsError = useModelStore((s) => s.openRouterCreditsError);
   const setCreditsError = useModelStore((s) => s.setCreditsError);
   const rateLimitError = useModelStore((s) => s.rateLimitError);
   const setRateLimitError = useModelStore((s) => s.setRateLimitError);
+  const { sessionId, setSessionId } = useChatStore();
+
+  useEffect(() => {
+    const initSession = async () => {
+      if (!sessionId) {
+        try {
+          const { session_id } = await createSession();
+          setSessionId(session_id);
+        } catch (error) {
+          console.error("Failed to create session:", error);
+        }
+      }
+    };
+    initSession();
+  }, [sessionId, setSessionId]);
 
   return (
     <div className="flex flex-col h-screen bg-zinc-50">
