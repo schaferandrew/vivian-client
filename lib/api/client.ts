@@ -25,11 +25,11 @@ async function fetchApi<T>(
 }
 
 // Simple chat message - returns agent response (via same-origin proxy so it works regardless of how you open the app)
-export async function sendChatMessage(message: string): Promise<{ response: string; session_id?: string }> {
+export async function sendChatMessage(message: string, webSearchEnabled: boolean = false): Promise<{ response: string; session_id?: string }> {
   const res = await fetch("/api/agent/chat/message", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, web_search_enabled: webSearchEnabled }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { error?: string; message?: string; detail?: string };

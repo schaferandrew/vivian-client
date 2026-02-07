@@ -11,7 +11,7 @@ import Link from "next/link";
 
 export function ChatInput() {
   const [message, setMessage] = useState("");
-  const { addMessage, setLoading } = useChatStore();
+  const { addMessage, setLoading, webSearchEnabled } = useChatStore();
   const setCreditsError = useModelStore((s) => s.setCreditsError);
   const setRateLimitError = useModelStore((s) => s.setRateLimitError);
 
@@ -34,7 +34,7 @@ export function ChatInput() {
     
     try {
       // Send to backend via HTTP
-      const response = await sendChatMessage(userMessage);
+      const response = await sendChatMessage(userMessage, webSearchEnabled);
       setCreditsError(null);
       setRateLimitError(null);
       // Add agent response

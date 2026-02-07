@@ -69,7 +69,7 @@ export interface UnreimbursedBalanceResponse {
 }
 
 // WebSocket message types matching backend protocol
-export type MessageType = 
+export type MessageType =
   | "handshake"
   | "handshake_response"
   | "text"
@@ -82,7 +82,9 @@ export type MessageType =
   | "flow_event"
   | "file_upload"
   | "file_chunk"
-  | "error";
+  | "error"
+  | "settings"
+  | "settings_response";
 
 export interface WebSocketMessage {
   type: MessageType;

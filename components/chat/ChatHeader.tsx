@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Home, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { ModelSelector } from "./ModelSelector";
+import { WebSearchToggle } from "./WebSearchToggle";
 
 export function ChatHeader() {
   return (
@@ -25,6 +26,7 @@ export function ChatHeader() {
         </div>
       </div>
       <div className="flex items-center gap-3">
+        <WebSearchToggle />
         <ModelSelector />
         <Badge variant="outline" className="gap-1">
           <span className="w-2 h-2 bg-green-500 rounded-full" />

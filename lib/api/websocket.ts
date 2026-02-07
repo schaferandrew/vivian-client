@@ -96,11 +96,22 @@ export function useWebSocket() {
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
+      const { setWebSearchEnabled } = useChatStore.getState();
+
       switch (message.type) {
         case "handshake_response":
           if (message.payload && typeof message.payload === "object") {
             const payload = message.payload as { session_id: string };
             setSessionId(payload.session_id);
+          }
+          break;
+
+        case "settings_response":
+          if (message.payload && typeof message.payload === "object") {
+            const payload = message.payload as { setting: string; value: boolean; success: boolean };
+            if (payload.setting === "web_search_enabled" && payload.success) {
+              setWebSearchEnabled(payload.value);
+            }
           }
           break;
 
@@ -234,9 +245,30 @@ export function useWebSocket() {
     return () => disconnect();
   }, [connect, disconnect]);
 
+  const toggleWebSearch = useCallback(
+    (enabled: boolean) => {
+      if (ws.current?.readyState !== WebSocket.OPEN) {
+        console.error("WebSocket not connected");
+        return;
+      }
+
+      const message: WebSocketMessage = {
+        type: "settings",
+        payload: {
+          setting: "web_search_enabled",
+          value: enabled,
+        },
+      };
+
+      ws.current.send(JSON.stringify(message));
+    },
+    []
+  );
+
   return {
     sendMessage,
     sendAction,
+    toggleWebSearch,
     connect,
     disconnect,
   };
