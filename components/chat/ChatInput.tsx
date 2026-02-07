@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useChatStore } from "@/lib/stores/chat";
+import { useModelStore } from "@/lib/stores/model";
 import { sendChatMessage } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +12,8 @@ import Link from "next/link";
 export function ChatInput() {
   const [message, setMessage] = useState("");
   const { addMessage, setLoading } = useChatStore();
+  const setCreditsError = useModelStore((s) => s.setCreditsError);
+  const setRateLimitError = useModelStore((s) => s.setRateLimitError);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +35,8 @@ export function ChatInput() {
     try {
       // Send to backend via HTTP
       const response = await sendChatMessage(userMessage);
-      
+      setCreditsError(null);
+      setRateLimitError(null);
       // Add agent response
       addMessage({
         id: (Date.now() + 1).toString(),
@@ -42,10 +46,39 @@ export function ChatInput() {
       });
     } catch (error) {
       console.error("Failed to send message:", error);
+      const err = error as Error & { code?: string };
+      if (err?.code === "insufficient_credits") {
+        setCreditsError(err.message ?? "Insufficient OpenRouter credits. Add credits and try again.");
+      }
+      if (err?.code === "rate_limit") {
+        setRateLimitError(err.message ?? "Rate limit exceeded. Please wait a moment and try again.");
+      }
+      if (err?.code === "model_not_found") {
+        // Model not found error - display it as a system message
+        addMessage({
+          id: (Date.now() + 1).toString(),
+          role: "system",
+          content: err.message ?? "Model not found or unavailable. Please select a different model.",
+          timestamp: new Date(),
+        });
+        setLoading(false);
+        return;
+      }
+      const isNetworkError =
+        error instanceof TypeError &&
+        (error.message === "Failed to fetch" || error.message.includes("fetch"));
+      const serverMessage =
+        error instanceof Error && error.message ? error.message : null;
+      const friendlyMessage =
+        serverMessage && (serverMessage.includes("chat server") || serverMessage.includes("backend"))
+          ? serverMessage
+          : isNetworkError
+            ? "Couldn't reach the chat server. Is the backend running? Check the console for details."
+            : serverMessage || "Sorry, I couldn't process your message. Please try again.";
       addMessage({
         id: (Date.now() + 1).toString(),
         role: "system",
-        content: "Sorry, I couldn't process your message. Please try again.",
+        content: friendlyMessage,
         timestamp: new Date(),
       });
     } finally {

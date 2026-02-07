@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { useChatStore } from "@/lib/stores/chat";
+import { useModelStore } from "@/lib/stores/model";
 import type {
   WebSocketMessage,
   HandshakePayload,
@@ -111,7 +112,7 @@ export function useWebSocket() {
               is_streaming?: boolean;
               is_complete?: boolean;
             };
-
+            useModelStore.getState().setCreditsError(null);
             if (payload.is_streaming) {
               if (payload.is_complete) {
                 completeStreamingMessage(payload.message_id);
@@ -149,7 +150,25 @@ export function useWebSocket() {
 
         case "error":
           if (message.payload && typeof message.payload === "object") {
-            const payload = message.payload as { message: string };
+            const payload = message.payload as { error_id?: string; message: string };
+            if (payload.error_id === "insufficient_credits") {
+              useModelStore.getState().setCreditsError(
+                payload.message ?? "Insufficient OpenRouter credits. Add credits and try again."
+              );
+            }
+            if (payload.error_id === "rate_limit") {
+              useModelStore.getState().setRateLimitError(
+                payload.message ?? "Rate limit exceeded. Please wait a moment and try again."
+              );
+            }
+            if (payload.error_id === "model_not_found") {
+              addMessage({
+                id: Date.now().toString(),
+                role: "system",
+                content: payload.message ?? "Model not found or unavailable. Please select a different model.",
+                timestamp: new Date(),
+              });
+            }
             addMessage({
               id: Date.now().toString(),
               role: "system",

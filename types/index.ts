@@ -183,6 +183,7 @@ export interface LLMModel {
   name: string;
   provider: string;
   selectable: boolean;
+  free?: boolean;
 }
 
 export interface ProviderStatus {

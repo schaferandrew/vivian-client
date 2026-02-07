@@ -9,11 +9,15 @@ interface ModelState {
   defaultModel: string;
   isLoading: boolean;
   error?: string;
+  openRouterCreditsError: string | null;
+  rateLimitError: string | null;
 
   fetchModels: () => Promise<void>;
   selectModel: (modelId: string) => Promise<boolean>;
   getCurrentModelName: () => string;
   isModelSelectable: (modelId: string) => boolean;
+  setCreditsError: (message: string | null) => void;
+  setRateLimitError: (message: string | null) => void;
 }
 
 export const useModelStore = create<ModelState>((set, get) => ({
@@ -23,11 +27,22 @@ export const useModelStore = create<ModelState>((set, get) => ({
   defaultModel: "gpt-3.5-turbo",
   isLoading: false,
   error: undefined,
+  openRouterCreditsError: null,
+  rateLimitError: null,
+
+  setCreditsError: (message: string | null) => {
+    set({ openRouterCreditsError: message });
+  },
+
+  setRateLimitError: (message: string | null) => {
+    set({ rateLimitError: message });
+  },
 
   fetchModels: async () => {
     set({ isLoading: true, error: undefined });
     try {
       const data = await getModels();
+      console.log("models from api", data);
       set({
         models: data.models,
         providers: data.providers,
