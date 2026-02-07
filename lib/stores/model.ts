@@ -42,7 +42,6 @@ export const useModelStore = create<ModelState>((set, get) => ({
     set({ isLoading: true, error: undefined });
     try {
       const data = await getModels();
-      console.log("models from api", data);
       set({
         models: data.models,
         providers: data.providers,
