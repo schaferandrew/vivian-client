@@ -8,7 +8,8 @@ import { useChatStore } from "@/lib/stores/chat";
 export function ChatHeader() {
   const { chats, currentChatId } = useChatStore();
   const activeChat = chats.find((chat) => chat.id === currentChatId);
-  const activeTitle = activeChat?.title?.trim() || "New Chat";
+  const activeTitle =
+    activeChat?.summary?.trim() || activeChat?.title?.trim() || "New Chat";
 
   return (
     <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background shrink-0">

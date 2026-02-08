@@ -5,6 +5,8 @@ import { useChatStore } from "@/lib/stores/chat";
 import { cn } from "@/lib/utils";
 import type { ChatMessage as ChatMessageType } from "@/types";
 
+import MarkdownRenderer from '../ui/MarkdownRenderer';
+
 function ChatMessage({ message }: { message: ChatMessageType }) {
   return (
     <div
@@ -23,7 +25,7 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
             : "bg-secondary text-foreground"
         )}
       >
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        <MarkdownRenderer content={message.content} />
       </div>
     </div>
   );
@@ -57,7 +59,7 @@ export function ChatContainer() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-16">
             <p className="text-sm font-medium text-muted-foreground">Start a conversation with Vivian</p>
-            <p className="text-xs mt-2">Try: "Upload a receipt" or "What's my HSA balance?"</p>
+            <p className="text-xs mt-2">Try: &quot;Upload a receipt&quot; or &quot;What&apos;s my HSA balance?&quot;</p>
           </div>
         )}
 
