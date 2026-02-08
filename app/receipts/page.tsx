@@ -193,7 +193,7 @@ function ReviewStep() {
 }
 
 function ConfirmStep() {
-  const { tempFilePath, parsedData, setStep, reset } = useReceiptStore();
+  const { tempFilePath, parsedData, setStep } = useReceiptStore();
   const [status, setStatus] = useState<ReimbursementStatus>("unreimbursed");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
