@@ -5,6 +5,8 @@ import { useChatStore } from "@/lib/stores/chat";
 import { cn } from "@/lib/utils";
 import type { ChatMessage as ChatMessageType } from "@/types";
 
+import MarkdownRenderer from '../ui/MarkdownRenderer';
+
 function ChatMessage({ message }: { message: ChatMessageType }) {
   return (
     <div
@@ -23,7 +25,7 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
             : "bg-secondary text-foreground"
         )}
       >
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        <MarkdownRenderer content={message.content} />
       </div>
     </div>
   );
@@ -36,7 +38,7 @@ function LoadingIndicator() {
         <div className="flex gap-1">
           <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
           <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-          <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" />} />
         </div>
       </div>
     </div>
@@ -72,3 +74,4 @@ export function ChatContainer() {
     </div>
   );
 }
+// Added a trivial comment to force git to recognize changes.
