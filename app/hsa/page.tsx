@@ -14,14 +14,14 @@ export default async function HSAPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="bg-white border-b border-zinc-200">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border">
         <div className="max-w-5xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-zinc-600 hover:text-zinc-900">
+            <Link href="/" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <Wallet className="w-6 h-6 text-zinc-700" />
+            <Wallet className="w-6 h-6 text-foreground" />
             <h1 className="text-xl font-semibold">HSA Dashboard</h1>
           </div>
         </div>
@@ -65,7 +65,7 @@ export default async function HSAPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-zinc-500" />
+              <FileText className="w-5 h-5 text-muted-foreground" />
               <CardTitle>Recent Expenses</CardTitle>
             </div>
             <CardDescription>
@@ -73,12 +73,12 @@ export default async function HSAPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12 text-zinc-500">
+            <div className="text-center py-12 text-muted-foreground">
               <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>Recent expenses view coming soon</p>
               <p className="text-sm mt-2">For now, ask Vivian in chat to show recent expenses</p>
               <Link href="/chat">
-                <button className="mt-4 text-blue-600 hover:underline">
+                <button className="mt-4 text-primary hover:underline">
                   Go to Chat
                 </button>
               </Link>

@@ -1,43 +1,63 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useChatStore } from "@/lib/stores/chat";
 import { useModelStore } from "@/lib/stores/model";
 import { sendChatMessage } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Paperclip, Send } from "lucide-react";
+import { Globe, Paperclip, Send } from "lucide-react";
 import Link from "next/link";
 
 export function ChatInput() {
   const [message, setMessage] = useState("");
-  const { addMessage, setLoading, webSearchEnabled, sessionId } = useChatStore();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const {
+    addMessage,
+    setLoading,
+    webSearchEnabled,
+    setWebSearchEnabled,
+    fetchChats,
+  } = useChatStore();
   const setCreditsError = useModelStore((s) => s.setCreditsError);
   const setRateLimitError = useModelStore((s) => s.setRateLimitError);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [message]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    
+
     const userMessage = message.trim();
-    
-    // Add user message immediately
+
     addMessage({
       id: Date.now().toString(),
       role: "user",
       content: userMessage,
       timestamp: new Date(),
     });
-    
+
     setMessage("");
     setLoading(true);
-    
+
     try {
-      // Send to backend via HTTP
-      const response = await sendChatMessage(userMessage, sessionId, webSearchEnabled);
+      const { sessionId, currentChatId } = useChatStore.getState();
+      const response = await sendChatMessage(userMessage, sessionId, currentChatId, webSearchEnabled);
       setCreditsError(null);
       setRateLimitError(null);
-      // Add agent response
+
+      useChatStore.setState((state) => ({
+        sessionId: response.session_id || state.sessionId,
+        currentChatId: response.chat_id || state.currentChatId,
+      }));
+
+      await fetchChats();
+
       addMessage({
         id: (Date.now() + 1).toString(),
         role: "agent",
@@ -54,7 +74,6 @@ export function ChatInput() {
         setRateLimitError(err.message ?? "Rate limit exceeded. Please wait a moment and try again.");
       }
       if (err?.code === "model_not_found") {
-        // Model not found error - display it as a system message
         addMessage({
           id: (Date.now() + 1).toString(),
           role: "system",
@@ -94,31 +113,54 @@ export function ChatInput() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-zinc-200 p-4">
-      <div className="flex gap-2 items-end">
-        <Link
-          href="/receipts"
-          className="flex items-center justify-center w-10 h-10 rounded-lg border border-zinc-200 hover:bg-zinc-50 transition-colors"
-        >
-          <Paperclip className="w-5 h-5 text-zinc-600" />
-        </Link>
-        
-        <Textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
-          className="flex-1 min-h-[44px] max-h-[120px] resize-none"
-          rows={1}
-        />
-        
-        <Button
-          type="submit"
-          disabled={!message.trim()}
-          className="h-10 w-10 p-0"
-        >
-          <Send className="w-4 h-4" />
-        </Button>
+    <form onSubmit={handleSubmit} className="bg-background shrink-0">
+      <div className="max-w-3xl mx-auto px-4 pb-4 pt-3">
+        <div className="border border-border rounded-2xl bg-card">
+          <Textarea
+            ref={textareaRef}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message..."
+            className="w-full border-none resize-none shadow-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[56px] max-h-[220px] py-3 px-4 text-[15px] rounded-t-2xl"
+            rows={1}
+          />
+
+          <div className="flex items-center justify-between px-3 pb-2 pt-1">
+            <div className="flex items-center gap-1">
+              <Link
+                href="/receipts"
+                className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-secondary transition-colors"
+                title="Upload receipt"
+              >
+                <Paperclip className="w-4 h-4 text-muted-foreground" />
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${
+                  webSearchEnabled
+                    ? "bg-[var(--primary-100)] text-[var(--primary-700)]"
+                    : "hover:bg-secondary text-muted-foreground"
+                }`}
+                title="Toggle web search"
+              >
+                <Globe className="w-4 h-4" />
+              </button>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={!message.trim()}
+              size="sm"
+              className="h-8 px-3 rounded-md"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send
+            </Button>
+          </div>
+        </div>
       </div>
     </form>
   );

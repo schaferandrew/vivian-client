@@ -204,3 +204,54 @@ export interface ModelSelectResponse {
   success: boolean;
   selected_model: string;
 }
+
+// Chat history types
+export interface Chat {
+  id: string;
+  user_id: string;
+  title: string;
+  summary: string | null;
+  model: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessageDB {
+  id: string;
+  chat_id: string;
+  role: string;
+  content: string;
+  timestamp: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface ChatWithMessages extends Chat {
+  messages: ChatMessageDB[];
+}
+
+export interface ChatListResponse {
+  chats: Chat[];
+  total: number;
+}
+
+export interface CreateChatRequest {
+  title?: string;
+  model?: string;
+}
+
+export interface UpdateTitleRequest {
+  title: string;
+}
+
+export interface GenerateSummaryResponse {
+  summary: string;
+  title: string;
+}
+
+// User profile types
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}

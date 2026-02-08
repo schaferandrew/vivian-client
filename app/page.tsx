@@ -4,17 +4,17 @@ import { MessageSquare, Upload, Wallet, Settings } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-zinc-200">
+      <header className="bg-card border-b border-border">
         <div className="max-w-5xl mx-auto px-4 py-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-xl">V</span>
+            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xl">V</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-zinc-900">Vivian</h1>
-              <p className="text-sm text-zinc-500">Your household assistant</p>
+              <h1 className="text-2xl font-bold text-foreground">Vivian</h1>
+              <p className="text-sm text-muted-foreground">Your household assistant</p>
             </div>
           </div>
         </div>
@@ -27,8 +27,8 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 bg-[var(--primary-100)] rounded-lg flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-[var(--primary-700)]" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">Chat</CardTitle>
@@ -43,8 +43,8 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Upload className="w-5 h-5 text-green-600" />
+                  <div className="w-10 h-10 bg-[var(--success-100)] rounded-lg flex items-center justify-center">
+                    <Upload className="w-5 h-5 text-[var(--success-700)]" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">Upload Receipt</CardTitle>
@@ -59,8 +59,8 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-purple-600" />
+                  <div className="w-10 h-10 bg-[var(--brand-100)] rounded-lg flex items-center justify-center">
+                    <Wallet className="w-5 h-5 text-[var(--brand-800)]" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">HSA Dashboard</CardTitle>
@@ -75,8 +75,8 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-zinc-100 rounded-lg flex items-center justify-center">
-                    <Settings className="w-5 h-5 text-zinc-600" />
+                  <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
+                    <Settings className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">Settings</CardTitle>

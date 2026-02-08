@@ -39,14 +39,16 @@ export async function createSession(): Promise<{ session_id: string; created_at:
 export async function sendChatMessage(
   message: string,
   sessionId: string | null,
+  chatId: string | null,
   webSearchEnabled: boolean = false
-): Promise<{ response: string; session_id: string }> {
+): Promise<{ response: string; session_id: string; chat_id: string }> {
   const res = await fetch("/api/agent/chat/message", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message,
       session_id: sessionId,
+      chat_id: chatId,
       web_search_enabled: webSearchEnabled,
     }),
   });
@@ -138,4 +140,39 @@ export async function selectModel(modelId: string): Promise<import("@/types").Mo
     throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
   }
   return res.json();
+}
+
+// Chat history API functions
+export async function getChats(): Promise<import("@/types").ChatListResponse> {
+  return fetchApi("/chats/");
+}
+
+export async function getChat(chatId: string): Promise<import("@/types").ChatWithMessages> {
+  return fetchApi(`/chats/${chatId}/`);
+}
+
+export async function createChat(data?: { title?: string; model?: string }): Promise<import("@/types").Chat> {
+  return fetchApi("/chats/", {
+    method: "POST",
+    body: JSON.stringify(data ?? { title: "New Chat" }),
+  });
+}
+
+export async function deleteChat(chatId: string): Promise<void> {
+  await fetchApi(`/chats/${chatId}/`, {
+    method: "DELETE",
+  });
+}
+
+export async function updateChatTitle(chatId: string, title: string): Promise<import("@/types").Chat> {
+  return fetchApi(`/chats/${chatId}/title`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function generateSummary(chatId: string): Promise<import("@/types").GenerateSummaryResponse> {
+  return fetchApi(`/chats/${chatId}/generate-summary`, {
+    method: "POST",
+  });
 }

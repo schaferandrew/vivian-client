@@ -49,11 +49,11 @@ function UploadStep() {
           e.preventDefault();
           onDrop(e.dataTransfer.files);
         }}
-        className="border-2 border-dashed border-zinc-300 rounded-lg p-12 text-center hover:border-zinc-400 transition-colors"
+        className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-[var(--neutral-300)] transition-colors"
       >
-        <Upload className="w-12 h-12 text-zinc-400 mx-auto mb-4" />
-        <p className="text-zinc-600 mb-2">Drag and drop a PDF receipt here</p>
-        <p className="text-sm text-zinc-400 mb-4">or</p>
+        <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground mb-2">Drag and drop a PDF receipt here</p>
+        <p className="text-sm text-[var(--neutral-400)] mb-4">or</p>
         <label className="cursor-pointer">
           <Input
             type="file"
@@ -123,33 +123,33 @@ function ReviewStep() {
           Confidence: {Math.round(parsedData.confidence * 100)}%
         </Badge>
         {needsReview && (
-          <span className="text-sm text-red-600">Review recommended</span>
+          <span className="text-sm text-[var(--error-600)]">Review recommended</span>
         )}
       </div>
 
       <div className="space-y-3">
         <div>
-          <label className="text-sm font-medium text-zinc-700">Provider</label>
+          <label className="text-sm font-medium text-foreground">Provider</label>
           <Input
             value={editedExpense?.provider || ""}
             onChange={(e) => setEditedExpense(prev => prev ? { ...prev, provider: e.target.value } : undefined)}
-            className={needsReview ? "border-yellow-400" : ""}
+            className={needsReview ? "border-[var(--brand-400)]" : ""}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-sm font-medium text-zinc-700">Amount</label>
+            <label className="text-sm font-medium text-foreground">Amount</label>
             <Input
               type="number"
               step="0.01"
               value={editedExpense?.amount || ""}
               onChange={(e) => setEditedExpense(prev => prev ? { ...prev, amount: parseFloat(e.target.value) } : undefined)}
-              className={needsReview ? "border-yellow-400" : ""}
+              className={needsReview ? "border-[var(--brand-400)]" : ""}
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-zinc-700">Service Date</label>
+            <label className="text-sm font-medium text-foreground">Service Date</label>
             <Input
               type="date"
               value={editedExpense?.service_date || ""}
@@ -159,7 +159,7 @@ function ReviewStep() {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-zinc-700">HSA Eligible</label>
+          <label className="text-sm font-medium text-foreground">HSA Eligible</label>
           <div className="flex gap-4 mt-1">
             <label className="flex items-center gap-2">
               <input
@@ -217,10 +217,10 @@ function ConfirmStep() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-zinc-600">Select the reimbursement status:</p>
+      <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>
 
       <div className="space-y-2">
-        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-zinc-50">
+        <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
           <input
             type="radio"
             name="status"
@@ -230,11 +230,11 @@ function ConfirmStep() {
           />
           <div>
             <p className="font-medium">Already Reimbursed</p>
-            <p className="text-sm text-zinc-500">I&apos;ve already been paid back from my HSA</p>
+            <p className="text-sm text-muted-foreground">I&apos;ve already been paid back from my HSA</p>
           </div>
         </label>
 
-        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-zinc-50">
+        <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
           <input
             type="radio"
             name="status"
@@ -244,11 +244,11 @@ function ConfirmStep() {
           />
           <div>
             <p className="font-medium">Save for Future</p>
-            <p className="text-sm text-zinc-500">Track this expense for future reimbursement</p>
+            <p className="text-sm text-muted-foreground">Track this expense for future reimbursement</p>
           </div>
         </label>
 
-        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-zinc-50">
+        <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
           <input
             type="radio"
             name="status"
@@ -258,7 +258,7 @@ function ConfirmStep() {
           />
           <div>
             <p className="font-medium">Not HSA Eligible</p>
-            <p className="text-sm text-zinc-500">This expense doesn&apos;t qualify for HSA</p>
+            <p className="text-sm text-muted-foreground">This expense doesn&apos;t qualify for HSA</p>
           </div>
         </label>
       </div>
@@ -281,9 +281,9 @@ function SuccessStep() {
 
   return (
     <div className="text-center py-8">
-      <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+      <CheckCircle className="w-16 h-16 text-[var(--success-500)] mx-auto mb-4" />
       <h3 className="text-lg font-semibold mb-2">Receipt Saved!</h3>
-      <p className="text-zinc-600 mb-6">Your receipt has been processed and saved.</p>
+      <p className="text-muted-foreground mb-6">Your receipt has been processed and saved.</p>
       <div className="flex gap-3 justify-center">
         <Button variant="outline" onClick={() => reset()}>
           Upload Another
@@ -300,14 +300,14 @@ export default function ReceiptsPage() {
   const { step, error } = useReceiptStore();
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="bg-white border-b border-zinc-200">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-zinc-600 hover:text-zinc-900">
+            <Link href="/" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <FileText className="w-6 h-6 text-zinc-700" />
+            <FileText className="w-6 h-6 text-foreground" />
             <h1 className="text-xl font-semibold">Upload Receipt</h1>
           </div>
         </div>
@@ -320,7 +320,7 @@ export default function ReceiptsPage() {
           </CardHeader>
           <CardContent>
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+              <div className="mb-4 p-3 bg-[var(--error-50)] border border-[var(--error-200)] rounded-lg flex items-center gap-2 text-[var(--error-700)]">
                 <AlertCircle className="w-4 h-4" />
                 <span className="text-sm">{error}</span>
               </div>

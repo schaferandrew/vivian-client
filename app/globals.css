@@ -3,48 +3,108 @@
 @tailwind utilities;
 
 :root {
+  /* Neutral (black-based) */
+  --neutral-50: #fafafa;
+  --neutral-100: #f5f5f5;
+  --neutral-200: #e5e5e5;
+  --neutral-300: #d4d4d4;
+  --neutral-400: #a3a3a3;
+  --neutral-500: #737373;
+  --neutral-600: #525252;
+  --neutral-700: #404040;
+  --neutral-800: #262626;
+  --neutral-900: #171717;
+
+  /* Primary (logo-inspired blue) */
+  --primary-50: #edf1fb;
+  --primary-100: #d9e2f7;
+  --primary-200: #b8c8ef;
+  --primary-300: #93abdf;
+  --primary-400: #6d8dcf;
+  --primary-500: #4b72bf;
+  --primary-600: #3659a3;
+  --primary-700: #284482;
+  --primary-800: #1d325f;
+  --primary-900: #13203f;
+
+  /* Error (red) */
+  --error-50: #fef2f2;
+  --error-100: #fee2e2;
+  --error-200: #fecaca;
+  --error-300: #fca5a5;
+  --error-400: #f87171;
+  --error-500: #ef4444;
+  --error-600: #dc2626;
+  --error-700: #b91c1c;
+  --error-800: #991b1b;
+  --error-900: #7f1d1d;
+
+  /* Success (green) */
+  --success-50: #ecfdf3;
+  --success-100: #d1fae5;
+  --success-200: #a7f3d0;
+  --success-300: #6ee7b7;
+  --success-400: #34d399;
+  --success-500: #10b981;
+  --success-600: #059669;
+  --success-700: #047857;
+  --success-800: #065f46;
+  --success-900: #064e3b;
+
+  /* Brand (logo yellow) */
+  --brand-50: #fffaf0;
+  --brand-100: #fff2d9;
+  --brand-200: #ffe3a8;
+  --brand-300: #ffd274;
+  --brand-400: #f7c24f;
+  --brand-500: #edb23a;
+  --brand-600: #cf9028;
+  --brand-700: #a96f1e;
+  --brand-800: #835216;
+  --brand-900: #603a10;
+
   --radius: 0.625rem;
-  --background: #ffffff;
-  --foreground: #18181b;
-  --card: #ffffff;
-  --card-foreground: #18181b;
-  --popover: #ffffff;
-  --popover-foreground: #18181b;
-  --primary: #18181b;
-  --primary-foreground: #fafafa;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
-  --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #18181b;
+  --background: 0 0% 98%;
+  --foreground: 0 0% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 9%;
+  --primary: 220 50% 43%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 9%;
+  --destructive: 0 72% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 88%;
+  --input: 0 0% 88%;
+  --ring: 220 47% 52%;
 }
 
 .dark {
-  --background: #18181b;
-  --foreground: #fafafa;
-  --card: #27272a;
-  --card-foreground: #fafafa;
-  --popover: #27272a;
-  --popover-foreground: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #18181b;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #d4d4d8;
+  --background: 0 0% 9%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 15%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 15%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 221 54% 73%;
+  --primary-foreground: 220 53% 16%;
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 64%;
+  --accent: 0 0% 15%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 72% 42%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 32%;
+  --input: 0 0% 32%;
+  --ring: 221 54% 67%;
 }
 
 @layer base {
