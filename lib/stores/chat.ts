@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { ChatMessage, Chat } from "@/types";
+import type { ChatMessage, Chat, MCPServerInfo } from "@/types";
 import {
   getChats,
   getChat,
   deleteChat as apiDeleteChat,
+  getMcpServers,
 } from "@/lib/api/client";
 
 interface ChatState {
@@ -24,17 +25,21 @@ interface ChatState {
 
   // Web search toggle (costs ~$0.02 per query, default OFF)
   webSearchEnabled: boolean;
+  mcpServers: MCPServerInfo[];
 
   // Actions
   addMessage: (message: ChatMessage) => void;
   setLoading: (loading: boolean) => void;
   clearMessages: () => void;
   setWebSearchEnabled: (enabled: boolean) => void;
+  setMcpServers: (servers: MCPServerInfo[]) => void;
+  setMcpServerEnabled: (serverId: string, enabled: boolean) => void;
   setSessionId: (sessionId: string | null) => void;
   toggleSidebar: () => void;
 
   // Chat history actions
   fetchChats: () => Promise<void>;
+  fetchMcpServers: () => Promise<void>;
   loadChat: (chatId: string | null) => Promise<void>;
   createNewChat: () => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
@@ -50,6 +55,7 @@ export const useChatStore = create<ChatState>()(
       isLoading: false,
       sidebarCollapsed: false,
       webSearchEnabled: false,
+      mcpServers: [],
 
       addMessage: (message) =>
         set((state) => ({
@@ -61,6 +67,13 @@ export const useChatStore = create<ChatState>()(
       clearMessages: () => set({ messages: [] }),
 
       setWebSearchEnabled: (enabled) => set({ webSearchEnabled: enabled }),
+      setMcpServers: (servers) => set({ mcpServers: servers }),
+      setMcpServerEnabled: (serverId, enabled) =>
+        set((state) => ({
+          mcpServers: state.mcpServers.map((server) =>
+            server.id === serverId ? { ...server, enabled } : server
+          ),
+        })),
 
       setSessionId: (sessionId) => set({ sessionId }),
 
@@ -73,6 +86,21 @@ export const useChatStore = create<ChatState>()(
           set({ chats });
         } catch (error) {
           console.error("Failed to fetch chats:", error);
+        }
+      },
+
+      fetchMcpServers: async () => {
+        try {
+          const { servers, enabled_server_ids } = await getMcpServers();
+          const enabledSet = new Set(enabled_server_ids);
+          set({
+            mcpServers: servers.map((server) => ({
+              ...server,
+              enabled: enabledSet.has(server.id),
+            })),
+          });
+        } catch (error) {
+          console.error("Failed to fetch MCP servers:", error);
         }
       },
 
@@ -128,6 +156,7 @@ export const useChatStore = create<ChatState>()(
         messages: state.messages,
         sessionId: state.sessionId,
         webSearchEnabled: state.webSearchEnabled,
+        mcpServers: state.mcpServers,
         sidebarCollapsed: state.sidebarCollapsed,
         currentChatId: state.currentChatId,
       }),

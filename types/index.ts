@@ -58,8 +58,8 @@ export interface ConfirmReceiptRequest {
 
 export interface ConfirmReceiptResponse {
   success: boolean;
-  ledger_entry_id: string;
-  drive_file_id: string;
+  ledger_entry_id?: string;
+  drive_file_id?: string;
   message: string;
 }
 
@@ -174,6 +174,7 @@ export interface ReceiptUploadState {
   step: "upload" | "review" | "confirm" | "success";
   tempFilePath?: string;
   parsedData?: ParsedReceipt;
+  resultMessage?: string;
   isUploading: boolean;
   isParsing: boolean;
   error?: string;
@@ -203,6 +204,32 @@ export interface ModelsResponse {
 export interface ModelSelectResponse {
   success: boolean;
   selected_model: string;
+}
+
+// MCP server configuration types
+export interface MCPServerInfo {
+  id: string;
+  name: string;
+  description: string;
+  tools: string[];
+  default_enabled: boolean;
+  enabled: boolean;
+}
+
+export interface MCPServersResponse {
+  servers: MCPServerInfo[];
+  enabled_server_ids: string[];
+}
+
+export interface MCPEnabledUpdateResponse {
+  enabled_server_ids: string[];
+}
+
+export interface MCPTestAddResponse {
+  server_id: string;
+  a: number;
+  b: number;
+  sum: number;
 }
 
 // Chat history types

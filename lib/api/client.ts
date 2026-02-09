@@ -17,8 +17,19 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API Error: ${response.status} - ${error}`);
+    const errorJson = await response.json().catch(() => null) as {
+      detail?: string;
+      error?: string;
+      message?: string;
+    } | null;
+    const errorText = await response.text().catch(() => "");
+    const detail =
+      errorJson?.detail ||
+      errorJson?.error ||
+      errorJson?.message ||
+      errorText ||
+      `Request failed (${response.status})`;
+    throw new Error(detail);
   }
 
   return response.json();
@@ -40,7 +51,8 @@ export async function sendChatMessage(
   message: string,
   sessionId: string | null,
   chatId: string | null,
-  webSearchEnabled: boolean = false
+  webSearchEnabled: boolean = false,
+  enabledMcpServers: string[] = []
 ): Promise<{ response: string; session_id: string; chat_id: string }> {
   const res = await fetch("/api/agent/chat/message", {
     method: "POST",
@@ -50,6 +62,7 @@ export async function sendChatMessage(
       session_id: sessionId,
       chat_id: chatId,
       web_search_enabled: webSearchEnabled,
+      enabled_mcp_servers: enabledMcpServers,
     }),
   });
   if (!res.ok) {
@@ -175,4 +188,45 @@ export async function generateSummary(chatId: string): Promise<import("@/types")
   return fetchApi(`/chats/${chatId}/generate-summary`, {
     method: "POST",
   });
+}
+
+export async function getMcpServers(): Promise<import("@/types").MCPServersResponse> {
+  const res = await fetch("/api/agent/mcp/servers", { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateEnabledMcpServers(
+  enabledServerIds: string[]
+): Promise<import("@/types").MCPEnabledUpdateResponse> {
+  const res = await fetch("/api/agent/mcp/servers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled_server_ids: enabledServerIds }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function runMcpAdditionTest(
+  a: number,
+  b: number,
+  serverId = "test_addition"
+): Promise<import("@/types").MCPTestAddResponse> {
+  const res = await fetch("/api/agent/mcp/test-add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ a, b, server_id: serverId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
+  }
+  return res.json();
 }

@@ -30,10 +30,10 @@ export function Sidebar() {
         <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "justify-between"}`}>
           {!sidebarCollapsed && (
             <Image
-              src="/vivian.svg"
+              src="/vivian-square.svg"
               alt="Vivian"
-              width={40}
-              height={40}
+              width={32}
+              height={32}
               className="shrink-0 rounded-xl"
               priority
             />

@@ -193,7 +193,7 @@ function ReviewStep() {
 }
 
 function ConfirmStep() {
-  const { tempFilePath, parsedData, setStep } = useReceiptStore();
+  const { tempFilePath, parsedData, setStep, setError, setResultMessage } = useReceiptStore();
   const [status, setStatus] = useState<ReimbursementStatus>("unreimbursed");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -201,25 +201,39 @@ function ConfirmStep() {
     if (!tempFilePath || !parsedData) return;
 
     setIsSubmitting(true);
+    setError(undefined);
     try {
-      await confirmReceipt({
+      const result = await confirmReceipt({
         temp_file_path: tempFilePath,
         expense_data: parsedData.expense,
         status,
       });
+      setResultMessage(result.message);
       setStep("success");
     } catch (err) {
-      console.error("Failed to confirm:", err);
+      setError(err instanceof Error ? err.message : "Failed to confirm receipt");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const isEligible = parsedData?.expense.hsa_eligible !== false;
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>
+      {!isEligible && (
+        <div className="p-3 bg-[var(--error-50)] border border-[var(--error-200)] rounded-lg text-[var(--error-700)]">
+          <p className="text-sm font-medium">This receipt appears not HSA-eligible.</p>
+          <p className="text-sm mt-1">
+            If you confirm now, it will be ignored and not saved to Google Drive or your ledger.
+            Go back to Review and set HSA Eligible to Yes to override.
+          </p>
+        </div>
+      )}
 
-      <div className="space-y-2">
+      {isEligible && <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>}
+
+      {isEligible && <div className="space-y-2">
         <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
           <input
             type="radio"
@@ -247,29 +261,15 @@ function ConfirmStep() {
             <p className="text-sm text-muted-foreground">Track this expense for future reimbursement</p>
           </div>
         </label>
-
-        <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-          <input
-            type="radio"
-            name="status"
-            value="not_hsa_eligible"
-            checked={status === "not_hsa_eligible"}
-            onChange={(e) => setStatus(e.target.value as ReimbursementStatus)}
-          />
-          <div>
-            <p className="font-medium">Not HSA Eligible</p>
-            <p className="text-sm text-muted-foreground">This expense doesn&apos;t qualify for HSA</p>
-          </div>
-        </label>
-      </div>
+      </div>}
 
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={() => setStep("review")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+          {isEligible ? "Back" : "Back to Review"}
         </Button>
         <Button onClick={handleConfirm} disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Confirm & Save"}
+          {isSubmitting ? "Saving..." : isEligible ? "Confirm & Save" : "Ignore Receipt"}
         </Button>
       </div>
     </div>
@@ -277,13 +277,13 @@ function ConfirmStep() {
 }
 
 function SuccessStep() {
-  const { reset } = useReceiptStore();
+  const { reset, resultMessage } = useReceiptStore();
 
   return (
     <div className="text-center py-8">
       <CheckCircle className="w-16 h-16 text-[var(--success-500)] mx-auto mb-4" />
-      <h3 className="text-lg font-semibold mb-2">Receipt Saved!</h3>
-      <p className="text-muted-foreground mb-6">Your receipt has been processed and saved.</p>
+      <h3 className="text-lg font-semibold mb-2">Receipt Processed</h3>
+      <p className="text-muted-foreground mb-6">{resultMessage || "Your receipt has been processed."}</p>
       <div className="flex gap-3 justify-center">
         <Button variant="outline" onClick={() => reset()}>
           Upload Another
