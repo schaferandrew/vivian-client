@@ -213,7 +213,7 @@ function ConfirmStep() {
     setError(undefined);
     setShowTaskStatus(parsedData.expense.hsa_eligible !== false);
     setDriveStatus(parsedData.expense.hsa_eligible === false ? "pending" : "loading");
-    setSheetStatus("pending");
+    setSheetStatus(parsedData.expense.hsa_eligible === false ? "pending" : "loading");
     try {
       const result = await confirmReceipt({
         temp_file_path: tempFilePath,
