@@ -282,7 +282,7 @@ export default function SettingsPage() {
                     <p className="font-medium text-sm">{server.name}</p>
                     <p className="text-xs text-muted-foreground">{server.description}</p>
                     <p className="text-[11px] text-[var(--neutral-500)] mt-1">
-                      Tools: {server.tools.join(", ")}
+                      {server.source === "builtin" ? "Built-in" : "Custom"} · Tools: {server.tools.join(", ")}
                     </p>
                   </div>
                   <Button

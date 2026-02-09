@@ -214,6 +214,7 @@ export interface MCPServerInfo {
   tools: string[];
   default_enabled: boolean;
   enabled: boolean;
+  source: "builtin" | "custom" | string;
 }
 
 export interface MCPServersResponse {

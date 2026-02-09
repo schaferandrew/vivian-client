@@ -240,6 +240,9 @@ export function ChatInput() {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">{server.description}</p>
+                        <p className="text-[11px] text-[var(--neutral-500)] mt-1">
+                          {server.source === "builtin" ? "Built-in" : "Custom"}
+                        </p>
                       </button>
                     ))}
                   </div>
