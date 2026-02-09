@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertCircle, ArrowLeft, Loader2, Circle } from "lucide-react";
 import Link from "next/link";
 import type { ReimbursementStatus } from "@/types";
 
@@ -193,33 +193,82 @@ function ReviewStep() {
 }
 
 function ConfirmStep() {
-  const { tempFilePath, parsedData, setStep } = useReceiptStore();
+  const { tempFilePath, parsedData, setStep, setError, setResultMessage } = useReceiptStore();
   const [status, setStatus] = useState<ReimbursementStatus>("unreimbursed");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [driveStatus, setDriveStatus] = useState<"pending" | "loading" | "success" | "error">("pending");
+  const [sheetStatus, setSheetStatus] = useState<"pending" | "loading" | "success" | "error">("pending");
+  const [showTaskStatus, setShowTaskStatus] = useState(false);
+
+  const resetTaskStatuses = () => {
+    setDriveStatus("pending");
+    setSheetStatus("pending");
+    setShowTaskStatus(false);
+  };
 
   const handleConfirm = async () => {
     if (!tempFilePath || !parsedData) return;
 
     setIsSubmitting(true);
+    setError(undefined);
+    setShowTaskStatus(parsedData.expense.hsa_eligible !== false);
+    setDriveStatus(parsedData.expense.hsa_eligible === false ? "pending" : "loading");
+    setSheetStatus(parsedData.expense.hsa_eligible === false ? "pending" : "loading");
     try {
-      await confirmReceipt({
+      const result = await confirmReceipt({
         temp_file_path: tempFilePath,
         expense_data: parsedData.expense,
         status,
       });
+      if (result.drive_upload_success) {
+        setDriveStatus("success");
+      }
+      if (result.ledger_update_success) {
+        setSheetStatus("success");
+      }
+      if (result.drive_upload_success && !result.ledger_update_success) {
+        setSheetStatus("error");
+      }
+      setResultMessage(result.message);
       setStep("success");
     } catch (err) {
-      console.error("Failed to confirm:", err);
+      const typedError = err as Error & {
+        drive_upload_success?: boolean;
+        ledger_update_success?: boolean;
+      };
+      const driveSucceeded = typedError.drive_upload_success === true;
+      const sheetSucceeded = typedError.ledger_update_success === true;
+      setDriveStatus(driveSucceeded ? "success" : "error");
+      setSheetStatus(
+        sheetSucceeded
+          ? "success"
+          : driveSucceeded
+          ? "error"
+          : "pending"
+      );
+      setError(typedError.message || "Failed to confirm receipt");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const isEligible = parsedData?.expense.hsa_eligible !== false;
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>
+      {!isEligible && (
+        <div className="p-3 bg-[var(--error-50)] border border-[var(--error-200)] rounded-lg text-[var(--error-700)]">
+          <p className="text-sm font-medium">This receipt appears not HSA-eligible.</p>
+          <p className="text-sm mt-1">
+            If you confirm now, it will be ignored and not saved to Google Drive or your ledger.
+            Go back to Review and set HSA Eligible to Yes to override.
+          </p>
+        </div>
+      )}
 
-      <div className="space-y-2">
+      {isEligible && <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>}
+
+      {isEligible && <div className="space-y-2">
         <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
           <input
             type="radio"
@@ -247,29 +296,28 @@ function ConfirmStep() {
             <p className="text-sm text-muted-foreground">Track this expense for future reimbursement</p>
           </div>
         </label>
+      </div>}
 
-        <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-          <input
-            type="radio"
-            name="status"
-            value="not_hsa_eligible"
-            checked={status === "not_hsa_eligible"}
-            onChange={(e) => setStatus(e.target.value as ReimbursementStatus)}
-          />
-          <div>
-            <p className="font-medium">Not HSA Eligible</p>
-            <p className="text-sm text-muted-foreground">This expense doesn&apos;t qualify for HSA</p>
-          </div>
-        </label>
-      </div>
+      {showTaskStatus && isEligible && (
+        <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+          <TaskStatusRow label="Uploading receipt to Google Drive" status={driveStatus} />
+          <TaskStatusRow label="Updating Google Sheet ledger" status={sheetStatus} />
+        </div>
+      )}
 
       <div className="flex justify-between pt-4">
-        <Button variant="outline" onClick={() => setStep("review")}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            resetTaskStatuses();
+            setStep("review");
+          }}
+        >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+          {isEligible ? "Back" : "Back to Review"}
         </Button>
         <Button onClick={handleConfirm} disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Confirm & Save"}
+          {isSubmitting ? "Saving..." : isEligible ? "Confirm & Save" : "Ignore Receipt"}
         </Button>
       </div>
     </div>
@@ -277,21 +325,50 @@ function ConfirmStep() {
 }
 
 function SuccessStep() {
-  const { reset } = useReceiptStore();
+  const { reset, resultMessage } = useReceiptStore();
 
   return (
     <div className="text-center py-8">
       <CheckCircle className="w-16 h-16 text-[var(--success-500)] mx-auto mb-4" />
-      <h3 className="text-lg font-semibold mb-2">Receipt Saved!</h3>
-      <p className="text-muted-foreground mb-6">Your receipt has been processed and saved.</p>
+      <h3 className="text-lg font-semibold mb-2">Receipt Saved Successfully</h3>
+      <p className="text-muted-foreground mb-6">{resultMessage || "Your receipt has been processed."}</p>
       <div className="flex gap-3 justify-center">
         <Button variant="outline" onClick={() => reset()}>
-          Upload Another
+          Upload Another Receipt
         </Button>
-        <Link href="/hsa">
-          <Button>View HSA Dashboard</Button>
+        <Link href="/">
+          <Button>Back to Dashboard</Button>
         </Link>
       </div>
+    </div>
+  );
+}
+
+function TaskStatusRow({
+  label,
+  status,
+}: {
+  label: string;
+  status: "pending" | "loading" | "success" | "error";
+}) {
+  let icon = <Circle className="h-4 w-4 text-[var(--neutral-400)]" />;
+  let tone = "text-muted-foreground";
+
+  if (status === "loading") {
+    icon = <Loader2 className="h-4 w-4 animate-spin text-[var(--neutral-500)]" />;
+    tone = "text-foreground";
+  } else if (status === "success") {
+    icon = <CheckCircle className="h-4 w-4 text-[var(--success-600)]" />;
+    tone = "text-foreground";
+  } else if (status === "error") {
+    icon = <AlertCircle className="h-4 w-4 text-[var(--error-600)]" />;
+    tone = "text-[var(--error-700)]";
+  }
+
+  return (
+    <div className={`flex items-center gap-2 text-sm ${tone}`}>
+      {icon}
+      <span>{label}</span>
     </div>
   );
 }

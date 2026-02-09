@@ -58,8 +58,10 @@ export interface ConfirmReceiptRequest {
 
 export interface ConfirmReceiptResponse {
   success: boolean;
-  ledger_entry_id: string;
-  drive_file_id: string;
+  ledger_entry_id?: string;
+  drive_file_id?: string;
+  drive_upload_success?: boolean;
+  ledger_update_success?: boolean;
   message: string;
 }
 
@@ -167,6 +169,14 @@ export interface ChatMessage {
   timestamp: Date;
   confirmationRequest?: ConfirmationRequestPayload;
   isStreaming?: boolean;
+  toolsCalled?: ToolCallInfo[];
+}
+
+export interface ToolCallInfo {
+  server_id: string;
+  tool_name: string;
+  input?: string;
+  output?: string;
 }
 
 // Receipt upload state
@@ -174,6 +184,7 @@ export interface ReceiptUploadState {
   step: "upload" | "review" | "confirm" | "success";
   tempFilePath?: string;
   parsedData?: ParsedReceipt;
+  resultMessage?: string;
   isUploading: boolean;
   isParsing: boolean;
   error?: string;
@@ -205,6 +216,33 @@ export interface ModelSelectResponse {
   selected_model: string;
 }
 
+// MCP server configuration types
+export interface MCPServerInfo {
+  id: string;
+  name: string;
+  description: string;
+  tools: string[];
+  default_enabled: boolean;
+  enabled: boolean;
+  source: "builtin" | "custom" | string;
+}
+
+export interface MCPServersResponse {
+  servers: MCPServerInfo[];
+  enabled_server_ids: string[];
+}
+
+export interface MCPEnabledUpdateResponse {
+  enabled_server_ids: string[];
+}
+
+export interface MCPTestAddResponse {
+  server_id: string;
+  a: number;
+  b: number;
+  sum: number;
+}
+
 // Chat history types
 export interface Chat {
   id: string;
@@ -223,6 +261,13 @@ export interface ChatMessageDB {
   content: string;
   timestamp: string;
   metadata: Record<string, unknown> | null;
+}
+
+export interface ChatMessageResponse {
+  response: string;
+  session_id: string;
+  chat_id: string;
+  tools_called?: ToolCallInfo[];
 }
 
 export interface ChatWithMessages extends Chat {
