@@ -34,6 +34,7 @@ interface BulkImportState {
   // Import options
   options: {
     statusOverride: ReimbursementStatus | null;
+    itemStatusOverrides: Record<string, ReimbursementStatus | "default">;
     skipErrors: boolean;
     checkDuplicates: boolean;
     duplicateAction: "skip" | "flag" | "ask";
@@ -97,6 +98,7 @@ const initialState: BulkImportState = {
   selectedIds: new Set(),
   options: {
     statusOverride: "unreimbursed",
+    itemStatusOverrides: {},
     skipErrors: true,
     checkDuplicates: true,
     duplicateAction: "flag",
@@ -115,7 +117,15 @@ export const useBulkImportStore = create<BulkImportState & BulkImportActions>(
     setIsScanning: (isScanning) => set({ isScanning }),
     setScanningProgress: (scanningProgress) => set({ scanningProgress }),
     
-    setResults: (results) => set({ results }),
+    setResults: (results) =>
+      set((state) => ({
+        results,
+        selectedIds: new Set(),
+        options: {
+          ...state.options,
+          itemStatusOverrides: {},
+        },
+      })),
     setSummary: (summary) => set({ summary }),
     
     toggleSelection: (tempFilePath) => {

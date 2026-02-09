@@ -195,6 +195,9 @@ function DuplicateDetailPanel({ duplicates }: { duplicates: DuplicateInfo[] }) {
                   {dup.days_difference} day{dup.days_difference !== 1 ? "s" : ""} difference
                 </div>
               )}
+              {dup.message && (
+                <div className="mt-1 text-amber-700">{dup.message}</div>
+              )}
               <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
             </div>
           ))}
@@ -208,12 +211,18 @@ function ReceiptRow({
   result,
   isSelected,
   allowDuplicateSelection,
+  statusOverride,
+  defaultStatusLabel,
   onToggle,
+  onStatusOverrideChange,
 }: {
   result: BulkImportFileResult;
   isSelected: boolean;
   allowDuplicateSelection: boolean;
+  statusOverride?: ReimbursementStatus | "default";
+  defaultStatusLabel: string;
   onToggle: () => void;
+  onStatusOverrideChange?: (next: ReimbursementStatus | "default") => void;
 }) {
   const canSelect =
     result.status === "new" ||
@@ -271,6 +280,23 @@ function ReceiptRow({
           {result.duplicate_info && result.duplicate_info.length > 0 && (
             <DuplicateDetailPanel duplicates={result.duplicate_info} />
           )}
+
+          {canSelect && isSelected && onStatusOverrideChange && (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">
+              <p className="text-xs text-muted-foreground">
+                Status for this receipt:
+              </p>
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={statusOverride || "default"}
+                onChange={(e) => onStatusOverrideChange(e.target.value as ReimbursementStatus | "default")}
+              >
+                <option value="default">Use Default ({defaultStatusLabel})</option>
+                <option value="unreimbursed">Save for Future</option>
+                <option value="reimbursed">Already Reimbursed</option>
+              </select>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -280,6 +306,18 @@ function ReceiptRow({
 function ReviewStep() {
   const { results, summary, selectedIds, options, setOptions, toggleSelection, selectAll, deselectAll, setStep } =
     useBulkImportStore();
+  const globalStatusLabel = options.statusOverride === "reimbursed" ? "Already Reimbursed" : "Save for Future";
+
+  const handleToggle = (tempPath: string) => {
+    const isCurrentlySelected = selectedIds.has(tempPath);
+    toggleSelection(tempPath);
+
+    if (isCurrentlySelected && options.itemStatusOverrides[tempPath]) {
+      const nextOverrides = { ...options.itemStatusOverrides };
+      delete nextOverrides[tempPath];
+      setOptions({ itemStatusOverrides: nextOverrides });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -346,6 +384,38 @@ function ReviewStep() {
         <span>Allow selecting potential duplicates (override during import)</span>
       </label>
 
+      <div className="rounded-lg border border-border p-4 space-y-3">
+        <p className="text-sm text-muted-foreground">Default reimbursement status for selected receipts:</p>
+        <div className="space-y-2">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
+            <input
+              type="radio"
+              name="bulk-status"
+              value="reimbursed"
+              checked={options.statusOverride === "reimbursed"}
+              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
+            />
+            <div>
+              <p className="font-medium">Already Reimbursed</p>
+              <p className="text-sm text-muted-foreground">I&apos;ve already been paid back from my HSA</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
+            <input
+              type="radio"
+              name="bulk-status"
+              value="unreimbursed"
+              checked={options.statusOverride === "unreimbursed"}
+              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
+            />
+            <div>
+              <p className="font-medium">Save for Future</p>
+              <p className="text-sm text-muted-foreground">Track these expenses for future reimbursement</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
       <div className="space-y-4 max-h-[500px] overflow-y-auto border rounded-lg">
         {results.new.length > 0 && (
           <div>
@@ -358,7 +428,22 @@ function ReviewStep() {
                 result={result}
                 isSelected={result.temp_file_path ? selectedIds.has(result.temp_file_path) : false}
                 allowDuplicateSelection={false}
-                onToggle={() => result.temp_file_path && toggleSelection(result.temp_file_path)}
+                statusOverride={
+                  result.temp_file_path
+                    ? options.itemStatusOverrides[result.temp_file_path] || "default"
+                    : "default"
+                }
+                defaultStatusLabel={globalStatusLabel}
+                onToggle={() => result.temp_file_path && handleToggle(result.temp_file_path)}
+                onStatusOverrideChange={(next) => {
+                  if (!result.temp_file_path) return;
+                  setOptions({
+                    itemStatusOverrides: {
+                      ...options.itemStatusOverrides,
+                      [result.temp_file_path]: next,
+                    },
+                  });
+                }}
               />
             ))}
           </div>
@@ -375,7 +460,22 @@ function ReviewStep() {
                 result={result}
                 isSelected={result.temp_file_path ? selectedIds.has(result.temp_file_path) : false}
                 allowDuplicateSelection={options.forceImportDuplicates}
-                onToggle={() => result.temp_file_path && toggleSelection(result.temp_file_path)}
+                statusOverride={
+                  result.temp_file_path
+                    ? options.itemStatusOverrides[result.temp_file_path] || "default"
+                    : "default"
+                }
+                defaultStatusLabel={globalStatusLabel}
+                onToggle={() => result.temp_file_path && handleToggle(result.temp_file_path)}
+                onStatusOverrideChange={(next) => {
+                  if (!result.temp_file_path) return;
+                  setOptions({
+                    itemStatusOverrides: {
+                      ...options.itemStatusOverrides,
+                      [result.temp_file_path]: next,
+                    },
+                  });
+                }}
               />
             ))}
           </div>
@@ -392,7 +492,22 @@ function ReviewStep() {
                 result={result}
                 isSelected={result.temp_file_path ? selectedIds.has(result.temp_file_path) : false}
                 allowDuplicateSelection={false}
-                onToggle={() => result.temp_file_path && toggleSelection(result.temp_file_path)}
+                statusOverride={
+                  result.temp_file_path
+                    ? options.itemStatusOverrides[result.temp_file_path] || "default"
+                    : "default"
+                }
+                defaultStatusLabel={globalStatusLabel}
+                onToggle={() => result.temp_file_path && handleToggle(result.temp_file_path)}
+                onStatusOverrideChange={(next) => {
+                  if (!result.temp_file_path) return;
+                  setOptions({
+                    itemStatusOverrides: {
+                      ...options.itemStatusOverrides,
+                      [result.temp_file_path]: next,
+                    },
+                  });
+                }}
               />
             ))}
           </div>
@@ -409,6 +524,7 @@ function ReviewStep() {
                 result={result}
                 isSelected={false}
                 allowDuplicateSelection={false}
+                defaultStatusLabel={globalStatusLabel}
                 onToggle={() => {}}
               />
             ))}
@@ -430,7 +546,7 @@ function ReviewStep() {
 }
 
 function ConfirmStep() {
-  const { selectedIds, summary, results, setStep, setImportResults, setError, options, setOptions } = useBulkImportStore();
+  const { selectedIds, summary, results, setStep, setImportResults, setError, options } = useBulkImportStore();
   const [isImporting, setIsImporting] = useState(false);
   const [forceImport, setForceImport] = useState(false);
 
@@ -438,14 +554,21 @@ function ConfirmStep() {
     results.duplicates.map((r) => r.temp_file_path).filter((path): path is string => Boolean(path))
   );
   const selectedDuplicateCount = Array.from(selectedIds).filter((path) => duplicatePathSet.has(path)).length;
+  const selectedRows = [...results.new, ...results.flagged, ...results.duplicates].filter(
+    (r) => r.temp_file_path && r.expense && selectedIds.has(r.temp_file_path)
+  );
+  const selectedTotalAmount = selectedRows.reduce((sum, row) => sum + (row.expense?.amount || 0), 0);
 
   const handleImport = async () => {
-    const selectedItems = [...results.new, ...results.flagged, ...results.duplicates]
-      .filter((r) => r.temp_file_path && r.expense && selectedIds.has(r.temp_file_path))
-      .map((r) => ({
-        temp_file_path: r.temp_file_path as string,
+    const selectedItems = selectedRows.map((r) => {
+      const tempPath = r.temp_file_path as string;
+      const perItemStatus = options.itemStatusOverrides[tempPath];
+      return {
+        temp_file_path: tempPath,
         expense_data: r.expense!,
-      }));
+        status: perItemStatus && perItemStatus !== "default" ? perItemStatus : undefined,
+      };
+    });
 
     if (selectedItems.length === 0) {
       setError("No valid selected receipts to import");
@@ -496,38 +619,6 @@ function ConfirmStep() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-border p-4 space-y-3">
-        <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>
-        <div className="space-y-2">
-          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-            <input
-              type="radio"
-              name="bulk-status"
-              value="reimbursed"
-              checked={options.statusOverride === "reimbursed"}
-              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
-            />
-            <div>
-              <p className="font-medium">Already Reimbursed</p>
-              <p className="text-sm text-muted-foreground">I&apos;ve already been paid back from my HSA</p>
-            </div>
-          </label>
-          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-            <input
-              type="radio"
-              name="bulk-status"
-              value="unreimbursed"
-              checked={options.statusOverride === "unreimbursed"}
-              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
-            />
-            <div>
-              <p className="font-medium">Save for Future</p>
-              <p className="text-sm text-muted-foreground">Track these expenses for future reimbursement</p>
-            </div>
-          </label>
-        </div>
-      </div>
-
       {selectedDuplicateCount > 0 && (
         <div className="rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-4 space-y-3">
           <div className="flex items-center gap-2 text-[var(--warning-800)] font-medium">
@@ -552,11 +643,11 @@ function ConfirmStep() {
           </div>
           <div className="flex justify-between">
             <span>Total amount:</span>
-            <span className="font-medium">${summary.total_amount.toFixed(2)}</span>
+            <span className="font-medium">${selectedTotalAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
-            <span>Potential duplicates in scan:</span>
-            <span className="font-medium">{summary.duplicate_count}</span>
+            <span>Selected duplicates:</span>
+            <span className="font-medium">{selectedDuplicateCount}</span>
           </div>
         </div>
       )}

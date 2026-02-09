@@ -46,6 +46,21 @@ export interface ReceiptParseResponse {
   parsed_data: ParsedReceipt;
   needs_review: boolean;
   temp_file_path: string;
+  is_duplicate?: boolean;
+  duplicate_info?: DuplicateInfo[];
+  duplicate_check_error?: string;
+}
+
+export interface CheckDuplicateRequest {
+  expense_data: ExpenseSchema;
+  fuzzy_days?: number;
+}
+
+export interface CheckDuplicateResponse {
+  is_duplicate: boolean;
+  duplicate_info: DuplicateInfo[];
+  recommendation: string;
+  check_error?: string;
 }
 
 export interface ConfirmReceiptRequest {
@@ -80,6 +95,7 @@ export interface DuplicateInfo {
   confidence: number;
   match_type: "exact" | "fuzzy_date";
   days_difference?: number;
+  message?: string;
 }
 
 // Bulk import types
@@ -139,6 +155,7 @@ export interface BulkImportConfirmRequest {
 export interface BulkImportConfirmItem {
   temp_file_path: string;
   expense_data: ExpenseSchema;
+  status?: ReimbursementStatus;
 }
 
 export interface BulkImportConfirmResponse {
@@ -269,6 +286,9 @@ export interface ReceiptUploadState {
   step: "upload" | "review" | "confirm" | "success";
   tempFilePath?: string;
   parsedData?: ParsedReceipt;
+  parseIsDuplicate?: boolean;
+  parseDuplicateInfo?: DuplicateInfo[];
+  parseDuplicateCheckError?: string;
   isUploading: boolean;
   isParsing: boolean;
   error?: string;

@@ -105,6 +105,19 @@ export async function parseReceipt(tempFilePath: string): Promise<import("@/type
   });
 }
 
+export async function checkReceiptDuplicate(
+  expenseData: import("@/types").ExpenseSchema,
+  fuzzyDays: number = 3
+): Promise<import("@/types").CheckDuplicateResponse> {
+  return fetchApi("/receipts/check-duplicate", {
+    method: "POST",
+    body: JSON.stringify({
+      expense_data: expenseData,
+      fuzzy_days: fuzzyDays,
+    }),
+  });
+}
+
 // Confirm and save receipt
 export async function confirmReceipt(
   data: import("@/types").ConfirmReceiptRequest

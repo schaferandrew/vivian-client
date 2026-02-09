@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useReceiptStore } from "@/lib/stores/receipt";
 import { useBulkImportStore } from "@/lib/stores/bulk-import";
-import { uploadReceipt, parseReceipt, confirmReceipt } from "@/lib/api/client";
+import { uploadReceipt, parseReceipt, confirmReceipt, checkReceiptDuplicate } from "@/lib/api/client";
 import { BulkImportFlow } from "@/components/receipt/BulkImportFlow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,14 +81,19 @@ function ReviewStep() {
   const {
     tempFilePath,
     parsedData,
+    parseIsDuplicate,
+    parseDuplicateInfo,
+    parseDuplicateCheckError,
     setStep,
     setParsing,
     setParsedData,
+    setParseDuplicateInfo,
     isParsing,
     setError,
   } = useReceiptStore();
 
   const [editedExpense, setEditedExpense] = useState(parsedData?.expense);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
   const handleParse = async () => {
     if (!tempFilePath) return;
@@ -99,6 +104,11 @@ function ReviewStep() {
     try {
       const result = await parseReceipt(tempFilePath);
       setParsedData(result.parsed_data);
+      setParseDuplicateInfo(
+        Boolean(result.is_duplicate),
+        result.duplicate_info || [],
+        result.duplicate_check_error
+      );
       setEditedExpense(result.parsed_data.expense);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Parsing failed");
@@ -119,6 +129,48 @@ function ReviewStep() {
 
   const needsReview = parsedData.confidence < 0.85;
 
+  const hasCoreFieldChanges =
+    !!editedExpense &&
+    (
+      editedExpense.provider !== parsedData.expense.provider ||
+      editedExpense.service_date !== parsedData.expense.service_date ||
+      editedExpense.amount !== parsedData.expense.amount ||
+      editedExpense.hsa_eligible !== parsedData.expense.hsa_eligible
+    );
+
+  const handleContinue = async () => {
+    if (!editedExpense) return;
+
+    setIsCheckingDuplicates(true);
+    try {
+      if (editedExpense.hsa_eligible) {
+        const duplicateResult = await checkReceiptDuplicate(editedExpense);
+        setParseDuplicateInfo(
+          Boolean(duplicateResult.is_duplicate),
+          duplicateResult.duplicate_info || [],
+          duplicateResult.check_error
+        );
+      } else {
+        setParseDuplicateInfo(false, [], undefined);
+      }
+
+      setParsedData({
+        ...parsedData,
+        expense: editedExpense,
+      });
+      setStep("confirm");
+    } catch {
+      setParseDuplicateInfo(false, [], "Duplicate check unavailable. You can still continue and final duplicate checks will run on save.");
+      setParsedData({
+        ...parsedData,
+        expense: editedExpense,
+      });
+      setStep("confirm");
+    } finally {
+      setIsCheckingDuplicates(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
@@ -129,6 +181,48 @@ function ReviewStep() {
           <span className="text-sm text-[var(--error-600)]">Review recommended</span>
         )}
       </div>
+
+      {parseIsDuplicate && (
+        <div className="mb-4 p-4 bg-[var(--warning-50)] border border-[var(--warning-200)] rounded-lg space-y-3">
+          <div className="flex items-center gap-2 text-[var(--warning-800)] font-medium">
+            <AlertCircle className="w-5 h-5" />
+            <span>
+              Potential Duplicate{(parseDuplicateInfo?.length || 0) === 1 ? "" : "s"} Found During Scan
+            </span>
+          </div>
+          <p className="text-sm text-[var(--warning-700)]">
+            This is flagged before save so you can review now. You can still choose to import later.
+          </p>
+          {parseDuplicateInfo && parseDuplicateInfo.length > 0 ? (
+            <div className="space-y-2">
+              {parseDuplicateInfo.map((dup, idx) => (
+                <div key={idx} className="p-3 bg-white rounded border border-[var(--warning-200)] text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><span className="text-muted-foreground">Provider:</span> {dup.provider}</div>
+                    <div><span className="text-muted-foreground">Amount:</span> ${dup.amount.toFixed(2)}</div>
+                    <div><span className="text-muted-foreground">Date:</span> {dup.service_date || "N/A"}</div>
+                    <div><span className="text-muted-foreground">Status:</span> {dup.status}</div>
+                  </div>
+                  {dup.message && (
+                    <div className="mt-1 text-sm text-[var(--warning-700)]">{dup.message}</div>
+                  )}
+                  <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--warning-700)]">
+              Duplicate pattern detected but matching row details were not returned.
+            </p>
+          )}
+        </div>
+      )}
+
+      {parseDuplicateCheckError && (
+        <div className="mb-4 p-3 bg-[var(--warning-50)] border border-[var(--warning-200)] rounded-lg text-sm text-[var(--warning-700)]">
+          {parseDuplicateCheckError}
+        </div>
+      )}
 
       <div className="space-y-3">
         <div>
@@ -147,7 +241,13 @@ function ReviewStep() {
               type="number"
               step="0.01"
               value={editedExpense?.amount || ""}
-              onChange={(e) => setEditedExpense(prev => prev ? { ...prev, amount: parseFloat(e.target.value) } : undefined)}
+              onChange={(e) =>
+                setEditedExpense((prev) => {
+                  if (!prev) return undefined;
+                  const parsed = Number.parseFloat(e.target.value);
+                  return { ...prev, amount: Number.isFinite(parsed) ? parsed : 0 };
+                })
+              }
               className={needsReview ? "border-[var(--brand-400)]" : ""}
             />
           </div>
@@ -189,7 +289,13 @@ function ReviewStep() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <Button onClick={() => setStep("confirm")}>Continue</Button>
+        <Button onClick={handleContinue} disabled={isCheckingDuplicates}>
+          {isCheckingDuplicates
+            ? "Checking duplicates..."
+            : hasCoreFieldChanges
+            ? "Continue (Re-check Duplicates)"
+            : "Continue"}
+        </Button>
       </div>
     </div>
   );
@@ -315,29 +421,38 @@ function ConfirmStep() {
         </div>
       )}
 
-      {duplicateInfo && duplicateInfo.length > 0 && (
+      {duplicateInfo !== null && (
         <div className="p-4 bg-[var(--warning-50)] border border-[var(--warning-200)] rounded-lg space-y-3">
           <div className="flex items-center gap-2 text-[var(--warning-800)] font-medium">
             <AlertCircle className="w-5 h-5" />
-            <span>Potential Duplicate{duplicateInfo.length > 1 ? "s" : ""} Found</span>
+            <span>Potential Duplicate{duplicateInfo.length === 1 ? "" : "s"} Found</span>
           </div>
           <p className="text-sm text-[var(--warning-700)]">
             This receipt appears to match existing entries in your ledger.
           </p>
 
-          <div className="space-y-2">
-            {duplicateInfo.map((dup, idx) => (
-              <div key={idx} className="p-3 bg-white rounded border border-[var(--warning-200)] text-sm">
+          {duplicateInfo.length > 0 ? (
+            <div className="space-y-2">
+              {duplicateInfo.map((dup, idx) => (
+                <div key={idx} className="p-3 bg-white rounded border border-[var(--warning-200)] text-sm">
                 <div className="grid grid-cols-2 gap-2">
                   <div><span className="text-muted-foreground">Provider:</span> {dup.provider}</div>
                   <div><span className="text-muted-foreground">Amount:</span> ${dup.amount.toFixed(2)}</div>
                   <div><span className="text-muted-foreground">Date:</span> {dup.service_date || "N/A"}</div>
                   <div><span className="text-muted-foreground">Status:</span> {dup.status}</div>
                 </div>
+                {dup.message && (
+                  <div className="mt-1 text-sm text-[var(--warning-700)]">{dup.message}</div>
+                )}
                 <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
               </div>
             ))}
-          </div>
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--warning-700)]">
+              Duplicate was detected but exact matching rows were not returned.
+            </p>
+          )}
 
           <label className="flex items-center gap-2 text-sm">
             <input
