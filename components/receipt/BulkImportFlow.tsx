@@ -20,7 +20,7 @@ import {
   ChevronUp,
   Save,
 } from "lucide-react";
-import type { BulkImportFileResult, DuplicateInfo } from "@/types";
+import type { BulkImportFileResult, DuplicateInfo, ReimbursementStatus } from "@/types";
 
 function UploadStep() {
   const { setStep, setError, setIsScanning, setScanningProgress, setResults, setSummary } =
@@ -306,8 +306,8 @@ function ReviewStep() {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => selectAll("new")}>Select All New</Button>
-          <Button variant="outline" size="sm" onClick={() => selectAll("non-duplicates")}>Select All Non-Duplicates</Button>
+          <Button variant="outline" size="sm" onClick={() => selectAll("new")}>Select New Only</Button>
+          <Button variant="outline" size="sm" onClick={() => selectAll("non-duplicates")}>Select New + Under Review</Button>
           {options.forceImportDuplicates && (
             <Button
               variant="outline"
@@ -430,7 +430,7 @@ function ReviewStep() {
 }
 
 function ConfirmStep() {
-  const { selectedIds, summary, results, setStep, setImportResults, setError, options } = useBulkImportStore();
+  const { selectedIds, summary, results, setStep, setImportResults, setError, options, setOptions } = useBulkImportStore();
   const [isImporting, setIsImporting] = useState(false);
   const [forceImport, setForceImport] = useState(false);
 
@@ -466,10 +466,16 @@ function ConfirmStep() {
         totalAmount: response.total_amount,
         message: response.message,
         failures: response.results
-          .filter((r) => r.status === "failed")
+          .filter((r) => ["failed", "duplicate_exact", "duplicate_fuzzy"].includes(r.status))
           .map((r) => ({
             filename: r.filename,
-            error: r.error || "Unknown error",
+            error:
+              r.error ||
+              (r.status === "duplicate_exact"
+                ? "Duplicate detected (exact match)"
+                : r.status === "duplicate_fuzzy"
+                ? "Duplicate detected (near-date/provider/amount match)"
+                : "Unknown error"),
           })),
       });
       setStep("results");
@@ -488,6 +494,38 @@ function ConfirmStep() {
         <p className="text-muted-foreground">
           You&apos;re about to import {selectedIds.size} receipt{selectedIds.size !== 1 ? "s" : ""}
         </p>
+      </div>
+
+      <div className="rounded-lg border border-border p-4 space-y-3">
+        <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>
+        <div className="space-y-2">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
+            <input
+              type="radio"
+              name="bulk-status"
+              value="reimbursed"
+              checked={options.statusOverride === "reimbursed"}
+              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
+            />
+            <div>
+              <p className="font-medium">Already Reimbursed</p>
+              <p className="text-sm text-muted-foreground">I&apos;ve already been paid back from my HSA</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
+            <input
+              type="radio"
+              name="bulk-status"
+              value="unreimbursed"
+              checked={options.statusOverride === "unreimbursed"}
+              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
+            />
+            <div>
+              <p className="font-medium">Save for Future</p>
+              <p className="text-sm text-muted-foreground">Track these expenses for future reimbursement</p>
+            </div>
+          </label>
+        </div>
       </div>
 
       {selectedDuplicateCount > 0 && (

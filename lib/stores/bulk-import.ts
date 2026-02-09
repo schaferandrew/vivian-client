@@ -96,7 +96,7 @@ const initialState: BulkImportState = {
   summary: null,
   selectedIds: new Set(),
   options: {
-    statusOverride: null,
+    statusOverride: "unreimbursed",
     skipErrors: true,
     checkDuplicates: true,
     duplicateAction: "flag",
