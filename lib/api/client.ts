@@ -40,8 +40,9 @@ export async function sendChatMessage(
   message: string,
   sessionId: string | null,
   chatId: string | null,
-  webSearchEnabled: boolean = false
-): Promise<{ response: string; session_id: string; chat_id: string }> {
+  webSearchEnabled: boolean = false,
+  enabledMcpServers: string[] = []
+): Promise<import("@/types").ChatMessageResponse> {
   const res = await fetch("/api/agent/chat/message", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -50,6 +51,7 @@ export async function sendChatMessage(
       session_id: sessionId,
       chat_id: chatId,
       web_search_enabled: webSearchEnabled,
+      enabled_mcp_servers: enabledMcpServers,
     }),
   });
   if (!res.ok) {
@@ -177,6 +179,47 @@ export async function generateSummary(chatId: string): Promise<import("@/types")
   });
 }
 
+export async function getMcpServers(): Promise<import("@/types").MCPServersResponse> {
+  const res = await fetch("/api/agent/mcp/servers", { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateEnabledMcpServers(
+  enabledServerIds: string[]
+): Promise<import("@/types").MCPEnabledUpdateResponse> {
+  const res = await fetch("/api/agent/mcp/servers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled_server_ids: enabledServerIds }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function runMcpAdditionTest(
+  a: number,
+  b: number,
+  serverId = "test_addition"
+): Promise<import("@/types").MCPTestAddResponse> {
+  const res = await fetch("/api/agent/mcp/test-add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ a, b, server_id: serverId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
+  }
+  return res.json();
+}
+
 // Bulk Import API functions
 export async function bulkImportScan(
   directoryPath: string,
@@ -199,15 +242,38 @@ export async function bulkImportScan(
   });
 }
 
-export async function bulkImportConfirm(
+export async function bulkImportScanTemp(
   tempFilePaths: string[],
-  statusOverride?: import("@/types").ReimbursementStatus
+  options?: {
+    statusOverride?: import("@/types").ReimbursementStatus;
+    skipErrors?: boolean;
+    checkDuplicates?: boolean;
+    duplicateAction?: "skip" | "flag" | "ask";
+  }
+): Promise<import("@/types").BulkImportResponse> {
+  return fetchApi("/receipts/bulk-import/scan-temp", {
+    method: "POST",
+    body: JSON.stringify({
+      temp_file_paths: tempFilePaths,
+      status_override: options?.statusOverride,
+      skip_errors: options?.skipErrors ?? true,
+      check_duplicates: options?.checkDuplicates ?? true,
+      duplicate_action: options?.duplicateAction ?? "flag",
+    }),
+  });
+}
+
+export async function bulkImportConfirm(
+  items: import("@/types").BulkImportConfirmItem[],
+  statusOverride?: import("@/types").ReimbursementStatus,
+  force: boolean = false
 ): Promise<import("@/types").BulkImportConfirmResponse> {
   return fetchApi("/receipts/bulk-import/confirm", {
     method: "POST",
     body: JSON.stringify({
-      temp_file_paths: tempFilePaths,
+      items,
       status_override: statusOverride,
+      force,
     }),
   });
 }

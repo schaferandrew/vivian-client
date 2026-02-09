@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MessageSquare, Upload, Wallet, Settings, FolderOpen } from "lucide-react";
+import { MessageSquare, Upload, Wallet, Settings } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -8,10 +9,15 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-card border-b border-border">
         <div className="max-w-5xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">V</span>
-            </div>
+          <div className="flex items-center">
+            <Image
+              src="/vivian.svg"
+              alt="Vivian"
+              width={48}
+              height={48}
+              className="shrink-0 rounded-xl"
+              priority
+            />
             <div>
               <h1 className="text-2xl font-bold text-foreground">Vivian</h1>
               <p className="text-sm text-muted-foreground">Your household assistant</p>
@@ -47,24 +53,8 @@ export default function HomePage() {
                     <Upload className="w-5 h-5 text-[var(--success-700)]" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Upload Receipt</CardTitle>
-                    <CardDescription>Upload and process medical receipts for HSA tracking</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-
-          <Link href="/receipts/bulk-import">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[var(--primary-100)] rounded-lg flex items-center justify-center">
-                    <FolderOpen className="w-5 h-5 text-[var(--primary-700)]" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">Bulk Import</CardTitle>
-                    <CardDescription>Import multiple receipts at once with duplicate detection</CardDescription>
+                    <CardTitle className="text-lg">Receipts</CardTitle>
+                    <CardDescription>Upload single receipts or bulk import with duplicate detection</CardDescription>
                   </div>
                 </div>
               </CardHeader>

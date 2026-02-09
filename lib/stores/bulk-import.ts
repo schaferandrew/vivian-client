@@ -10,7 +10,6 @@ type BulkImportStep = "upload" | "scanning" | "review" | "confirm" | "results";
 interface BulkImportState {
   // Current step
   step: BulkImportStep;
-  directoryPath: string;
   
   // Processing state
   isScanning: boolean;
@@ -38,6 +37,7 @@ interface BulkImportState {
     skipErrors: boolean;
     checkDuplicates: boolean;
     duplicateAction: "skip" | "flag" | "ask";
+    forceImportDuplicates: boolean;
   };
   
   // Import results
@@ -46,6 +46,7 @@ interface BulkImportState {
     failedCount: number;
     totalAmount: number;
     message: string;
+    failures: Array<{ filename: string; error: string }>;
   } | null;
   
   // Error state
@@ -55,7 +56,6 @@ interface BulkImportState {
 interface BulkImportActions {
   // Step management
   setStep: (step: BulkImportStep) => void;
-  setDirectoryPath: (path: string) => void;
   
   // Scanning state
   setIsScanning: (scanning: boolean) => void;
@@ -85,7 +85,6 @@ interface BulkImportActions {
 
 const initialState: BulkImportState = {
   step: "upload",
-  directoryPath: "",
   isScanning: false,
   scanningProgress: null,
   results: {
@@ -101,6 +100,7 @@ const initialState: BulkImportState = {
     skipErrors: true,
     checkDuplicates: true,
     duplicateAction: "flag",
+    forceImportDuplicates: false,
   },
   importResults: null,
   error: null,
@@ -111,7 +111,6 @@ export const useBulkImportStore = create<BulkImportState & BulkImportActions>(
     ...initialState,
     
     setStep: (step) => set({ step }),
-    setDirectoryPath: (directoryPath) => set({ directoryPath }),
     
     setIsScanning: (isScanning) => set({ isScanning }),
     setScanningProgress: (scanningProgress) => set({ scanningProgress }),

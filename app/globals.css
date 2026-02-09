@@ -51,6 +51,18 @@
   --success-800: #065f46;
   --success-900: #064e3b;
 
+  /* Warning (yellow) */
+  --warning-50: #fffbeb;
+  --warning-100: #fef3c7;
+  --warning-200: #fde68a;
+  --warning-300: #fcd34d;
+  --warning-400: #fbbf24;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --warning-700: #b45309;
+  --warning-800: #92400e;
+  --warning-900: #78350f;
+
   /* Brand (logo yellow) */
   --brand-50: #fffaf0;
   --brand-100: #fff2d9;

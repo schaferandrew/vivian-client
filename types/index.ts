@@ -111,6 +111,14 @@ export interface BulkImportRequest {
   duplicate_action: "skip" | "flag" | "ask";
 }
 
+export interface BulkImportTempScanRequest {
+  temp_file_paths: string[];
+  status_override?: ReimbursementStatus;
+  skip_errors: boolean;
+  check_duplicates: boolean;
+  duplicate_action: "skip" | "flag" | "ask";
+}
+
 export interface BulkImportResponse {
   total_files: number;
   mode: "scan" | "import";
@@ -122,8 +130,15 @@ export interface BulkImportResponse {
 }
 
 export interface BulkImportConfirmRequest {
+  items: BulkImportConfirmItem[];
   temp_file_paths: string[];
   status_override?: ReimbursementStatus;
+  force?: boolean;
+}
+
+export interface BulkImportConfirmItem {
+  temp_file_path: string;
+  expense_data: ExpenseSchema;
 }
 
 export interface BulkImportConfirmResponse {
@@ -239,6 +254,14 @@ export interface ChatMessage {
   timestamp: Date;
   confirmationRequest?: ConfirmationRequestPayload;
   isStreaming?: boolean;
+  toolsCalled?: ToolCallInfo[];
+}
+
+export interface ToolCallInfo {
+  server_id: string;
+  tool_name: string;
+  input?: string;
+  output?: string;
 }
 
 // Receipt upload state
@@ -277,6 +300,33 @@ export interface ModelSelectResponse {
   selected_model: string;
 }
 
+// MCP server configuration types
+export interface MCPServerInfo {
+  id: string;
+  name: string;
+  description: string;
+  tools: string[];
+  default_enabled: boolean;
+  enabled: boolean;
+  source: "builtin" | "custom" | string;
+}
+
+export interface MCPServersResponse {
+  servers: MCPServerInfo[];
+  enabled_server_ids: string[];
+}
+
+export interface MCPEnabledUpdateResponse {
+  enabled_server_ids: string[];
+}
+
+export interface MCPTestAddResponse {
+  server_id: string;
+  a: number;
+  b: number;
+  sum: number;
+}
+
 // Chat history types
 export interface Chat {
   id: string;
@@ -295,6 +345,13 @@ export interface ChatMessageDB {
   content: string;
   timestamp: string;
   metadata: Record<string, unknown> | null;
+}
+
+export interface ChatMessageResponse {
+  response: string;
+  session_id: string;
+  chat_id: string;
+  tools_called?: ToolCallInfo[];
 }
 
 export interface ChatWithMessages extends Chat {

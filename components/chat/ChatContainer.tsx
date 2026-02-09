@@ -7,6 +7,83 @@ import type { ChatMessage as ChatMessageType } from "@/types";
 
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 
+function formatToolValue(value: unknown): string {
+  if (value === null || value === undefined) return "null";
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return `[${value.map(formatToolValue).join(", ")}]`;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function formatToolCall(
+  serverId: string,
+  toolName: string,
+  input?: string
+): string {
+  const fallback = `Tool: ${serverId}.${toolName}()`;
+  if (!input) return fallback;
+
+  try {
+    const parsed = JSON.parse(input);
+
+    if (
+      toolName === "add_numbers" &&
+      parsed &&
+      typeof parsed === "object" &&
+      typeof (parsed as { a?: unknown }).a === "number" &&
+      typeof (parsed as { b?: unknown }).b === "number"
+    ) {
+      const { a, b } = parsed as { a: number; b: number };
+      return `Tool: ${serverId}.${toolName}(${a} + ${b})`;
+    }
+
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const entries = Object.entries(parsed)
+        .slice(0, 4)
+        .map(([key, value]) => `${key}=${formatToolValue(value)}`);
+      const suffix = Object.keys(parsed).length > 4 ? ", ..." : "";
+      return `Tool: ${serverId}.${toolName}(${entries.join(", ")}${suffix})`;
+    }
+
+    return `Tool: ${serverId}.${toolName}(${formatToolValue(parsed)})`;
+  } catch {
+    const compact = input.length > 140 ? `${input.slice(0, 140)}...` : input;
+    return `Tool: ${serverId}.${toolName}(${compact})`;
+  }
+}
+
+function formatToolResult(toolName: string, output?: string): string | null {
+  if (!output) return null;
+
+  try {
+    const parsed = JSON.parse(output);
+
+    if (toolName === "add_numbers" && parsed && typeof parsed === "object") {
+      const maybeSum = (parsed as { sum?: unknown }).sum;
+      if (typeof maybeSum === "number") {
+        return `Result: ${maybeSum}`;
+      }
+    }
+
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const entries = Object.entries(parsed)
+        .slice(0, 4)
+        .map(([key, value]) => `${key}=${formatToolValue(value)}`);
+      const suffix = Object.keys(parsed).length > 4 ? ", ..." : "";
+      return `Result: ${entries.join(", ")}${suffix}`;
+    }
+
+    return `Result: ${formatToolValue(parsed)}`;
+  } catch {
+    const compact = output.length > 180 ? `${output.slice(0, 180)}...` : output;
+    return `Result: ${compact}`;
+  }
+}
+
 function ChatMessage({ message }: { message: ChatMessageType }) {
   return (
     <div
@@ -26,6 +103,18 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
         )}
       >
         <MarkdownRenderer content={message.content} />
+        {message.role === "agent" && message.toolsCalled && message.toolsCalled.length > 0 && (
+          <div className="mt-2 space-y-1 border-t border-border/50 pt-2">
+            {message.toolsCalled.map((tool, idx) => (
+              <div key={`${tool.server_id}-${tool.tool_name}-${idx}`} className="text-xs italic text-muted-foreground">
+                <p>{formatToolCall(tool.server_id, tool.tool_name, tool.input)}</p>
+                {formatToolResult(tool.tool_name, tool.output) && (
+                  <p>{formatToolResult(tool.tool_name, tool.output)}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -74,4 +163,3 @@ export function ChatContainer() {
     </div>
   );
 }
-// Added a trivial comment to force git to recognize changes.
