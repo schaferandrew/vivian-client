@@ -7,7 +7,38 @@ import type { ChatMessage as ChatMessageType } from "@/types";
 
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 
+function normalizeNumericLabel(value: string): string {
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) {
+    return value;
+  }
+  if (Number.isInteger(parsed)) {
+    return String(parsed);
+  }
+  return String(parsed);
+}
+
+function formatToolCallSummary(message: ChatMessageType): string | null {
+  if (!message.toolsCalled || message.toolsCalled.length === 0) {
+    return null;
+  }
+
+  const first = message.toolsCalled[0];
+  if (first?.tool_name === "add_numbers" && first.input) {
+    const match = first.input.match(
+      /(-?\d+(?:\.\d+)?)\s*\+\s*(-?\d+(?:\.\d+)?)/,
+    );
+    if (match) {
+      return `addition tool called for {${normalizeNumericLabel(match[1])}, ${normalizeNumericLabel(match[2])}}`;
+    }
+  }
+
+  return "tool called";
+}
+
 function ChatMessage({ message }: { message: ChatMessageType }) {
+  const toolSummary = formatToolCallSummary(message);
+
   return (
     <div
       className={cn(
@@ -16,16 +47,23 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
       )}
     >
       <div
-        className={cn(
-          "max-w-[80%] rounded-lg px-4 py-2",
-          message.role === "user"
-            ? "bg-primary text-primary-foreground"
-            : message.role === "system"
-            ? "bg-[var(--error-50)] text-[var(--error-800)] border border-[var(--error-200)]"
-            : "bg-secondary text-foreground"
-        )}
+        className={cn("max-w-[80%]")}
       >
-        <MarkdownRenderer content={message.content} />
+        {toolSummary && message.role === "agent" && (
+          <p className="mb-1 text-[11px] italic text-[var(--neutral-500)]">{toolSummary}</p>
+        )}
+        <div
+          className={cn(
+            "rounded-lg px-4 py-2",
+            message.role === "user"
+              ? "bg-primary text-primary-foreground"
+              : message.role === "system"
+              ? "bg-[var(--error-50)] text-[var(--error-800)] border border-[var(--error-200)]"
+              : "bg-secondary text-foreground"
+          )}
+        >
+          <MarkdownRenderer content={message.content} />
+        </div>
       </div>
     </div>
   );
@@ -74,4 +112,3 @@ export function ChatContainer() {
     </div>
   );
 }
-// Added a trivial comment to force git to recognize changes.

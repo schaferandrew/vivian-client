@@ -60,6 +60,8 @@ export interface ConfirmReceiptResponse {
   success: boolean;
   ledger_entry_id?: string;
   drive_file_id?: string;
+  drive_upload_success?: boolean;
+  ledger_update_success?: boolean;
   message: string;
 }
 
@@ -167,6 +169,14 @@ export interface ChatMessage {
   timestamp: Date;
   confirmationRequest?: ConfirmationRequestPayload;
   isStreaming?: boolean;
+  toolsCalled?: ToolCallInfo[];
+}
+
+export interface ToolCallInfo {
+  server_id: string;
+  tool_name: string;
+  input?: string;
+  output?: string;
 }
 
 // Receipt upload state
@@ -251,6 +261,13 @@ export interface ChatMessageDB {
   content: string;
   timestamp: string;
   metadata: Record<string, unknown> | null;
+}
+
+export interface ChatMessageResponse {
+  response: string;
+  session_id: string;
+  chat_id: string;
+  tools_called?: ToolCallInfo[];
 }
 
 export interface ChatWithMessages extends Chat {

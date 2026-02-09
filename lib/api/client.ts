@@ -53,7 +53,7 @@ export async function sendChatMessage(
   chatId: string | null,
   webSearchEnabled: boolean = false,
   enabledMcpServers: string[] = []
-): Promise<{ response: string; session_id: string; chat_id: string }> {
+): Promise<import("@/types").ChatMessageResponse> {
   const res = await fetch("/api/agent/chat/message", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -120,10 +120,32 @@ export async function parseReceipt(tempFilePath: string): Promise<import("@/type
 export async function confirmReceipt(
   data: import("@/types").ConfirmReceiptRequest
 ): Promise<import("@/types").ConfirmReceiptResponse> {
-  return fetchApi("/receipts/confirm", {
+  const response = await fetch(`${API_URL}/receipts/confirm`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
+
+  const payload = (await response.json().catch(() => ({}))) as import("@/types").ConfirmReceiptResponse & {
+    detail?: string;
+    error?: string;
+  };
+  if (!response.ok) {
+    const error = new Error(
+      payload.message ||
+      payload.detail ||
+      payload.error ||
+      `Request failed (${response.status})`
+    ) as Error & {
+      drive_upload_success?: boolean;
+      ledger_update_success?: boolean;
+    };
+    error.drive_upload_success = payload.drive_upload_success;
+    error.ledger_update_success = payload.ledger_update_success;
+    throw error;
+  }
+
+  return payload;
 }
 
 // Get unreimbursed balance

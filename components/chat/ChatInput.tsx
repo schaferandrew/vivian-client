@@ -114,6 +114,7 @@ export function ChatInput() {
         role: "agent",
         content: response.response,
         timestamp: new Date(),
+        toolsCalled: response.tools_called ?? [],
       });
     } catch (error) {
       console.error("Failed to send message:", error);

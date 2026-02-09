@@ -1,12 +1,33 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { ChatMessage, Chat, MCPServerInfo } from "@/types";
+import type { ChatMessage, Chat, MCPServerInfo, ToolCallInfo } from "@/types";
 import {
   getChats,
   getChat,
   deleteChat as apiDeleteChat,
   getMcpServers,
 } from "@/lib/api/client";
+
+function parseToolsCalled(metadata: unknown): ToolCallInfo[] {
+  if (!metadata || typeof metadata !== "object") {
+    return [];
+  }
+
+  const rawTools = (metadata as { tools_called?: unknown }).tools_called;
+  if (!Array.isArray(rawTools)) {
+    return [];
+  }
+
+  return rawTools
+    .filter((tool): tool is Record<string, unknown> => !!tool && typeof tool === "object")
+    .map((tool) => ({
+      server_id: String(tool.server_id ?? ""),
+      tool_name: String(tool.tool_name ?? ""),
+      input: typeof tool.input === "string" ? tool.input : undefined,
+      output: typeof tool.output === "string" ? tool.output : undefined,
+    }))
+    .filter((tool) => tool.server_id && tool.tool_name);
+}
 
 interface ChatState {
   // Messages
@@ -118,6 +139,7 @@ export const useChatStore = create<ChatState>()(
               role: msg.role as "user" | "agent" | "system",
               content: msg.content,
               timestamp: new Date(msg.timestamp),
+              toolsCalled: parseToolsCalled(msg.metadata),
             }));
             set({
               currentChatId: chatId,
