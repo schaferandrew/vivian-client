@@ -63,6 +63,75 @@ export interface ConfirmReceiptResponse {
   message: string;
 }
 
+// Duplicate detection types
+export interface DuplicateInfo {
+  entry_id: string;
+  provider: string;
+  service_date?: string;
+  paid_date?: string;
+  amount: number;
+  hsa_eligible: boolean;
+  status: string;
+  reimbursement_date?: string;
+  drive_file_id?: string;
+  confidence: number;
+  match_type: "exact" | "fuzzy_date";
+  days_difference?: number;
+}
+
+// Bulk import types
+export interface BulkImportFileResult {
+  filename: string;
+  status: "new" | "duplicate_exact" | "duplicate_fuzzy" | "flagged" | "failed" | "skipped";
+  temp_file_path?: string;
+  expense?: ExpenseSchema;
+  confidence: number;
+  duplicate_info?: DuplicateInfo[];
+  error?: string;
+  warnings: string[];
+}
+
+export interface BulkImportSummary {
+  total_amount: number;
+  new_count: number;
+  duplicate_count: number;
+  flagged_count: number;
+  failed_count: number;
+  ready_to_import: number;
+}
+
+export interface BulkImportRequest {
+  directory_path: string;
+  status_override?: ReimbursementStatus;
+  skip_errors: boolean;
+  check_duplicates: boolean;
+  duplicate_action: "skip" | "flag" | "ask";
+}
+
+export interface BulkImportResponse {
+  total_files: number;
+  mode: "scan" | "import";
+  new: BulkImportFileResult[];
+  duplicates: BulkImportFileResult[];
+  flagged: BulkImportFileResult[];
+  failed: BulkImportFileResult[];
+  summary: BulkImportSummary;
+}
+
+export interface BulkImportConfirmRequest {
+  temp_file_paths: string[];
+  status_override?: ReimbursementStatus;
+}
+
+export interface BulkImportConfirmResponse {
+  success: boolean;
+  imported_count: number;
+  failed_count: number;
+  total_amount: number;
+  results: BulkImportFileResult[];
+  message: string;
+}
+
 export interface UnreimbursedBalanceResponse {
   total_amount: number;
   count: number;

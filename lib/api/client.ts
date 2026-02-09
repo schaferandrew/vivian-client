@@ -176,3 +176,38 @@ export async function generateSummary(chatId: string): Promise<import("@/types")
     method: "POST",
   });
 }
+
+// Bulk Import API functions
+export async function bulkImportScan(
+  directoryPath: string,
+  options?: {
+    statusOverride?: import("@/types").ReimbursementStatus;
+    skipErrors?: boolean;
+    checkDuplicates?: boolean;
+    duplicateAction?: "skip" | "flag" | "ask";
+  }
+): Promise<import("@/types").BulkImportResponse> {
+  return fetchApi("/receipts/bulk-import/scan", {
+    method: "POST",
+    body: JSON.stringify({
+      directory_path: directoryPath,
+      status_override: options?.statusOverride,
+      skip_errors: options?.skipErrors ?? true,
+      check_duplicates: options?.checkDuplicates ?? true,
+      duplicate_action: options?.duplicateAction ?? "flag",
+    }),
+  });
+}
+
+export async function bulkImportConfirm(
+  tempFilePaths: string[],
+  statusOverride?: import("@/types").ReimbursementStatus
+): Promise<import("@/types").BulkImportConfirmResponse> {
+  return fetchApi("/receipts/bulk-import/confirm", {
+    method: "POST",
+    body: JSON.stringify({
+      temp_file_paths: tempFilePaths,
+      status_override: statusOverride,
+    }),
+  });
+}
