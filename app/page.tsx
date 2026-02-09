@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MessageSquare, Upload, Wallet, Settings } from "lucide-react";
+import { MessageSquare, Upload, Wallet, Settings, FolderOpen } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -49,6 +49,22 @@ export default function HomePage() {
                   <div>
                     <CardTitle className="text-lg">Upload Receipt</CardTitle>
                     <CardDescription>Upload and process medical receipts for HSA tracking</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link href="/receipts/bulk-import">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[var(--primary-100)] rounded-lg flex items-center justify-center">
+                    <FolderOpen className="w-5 h-5 text-[var(--primary-700)]" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Bulk Import</CardTitle>
+                    <CardDescription>Import multiple receipts at once with duplicate detection</CardDescription>
                   </div>
                 </div>
               </CardHeader>

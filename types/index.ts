@@ -54,13 +54,16 @@ export interface ConfirmReceiptRequest {
   status: ReimbursementStatus;
   reimbursement_date?: string;
   notes?: string;
+  force?: boolean;
 }
 
 export interface ConfirmReceiptResponse {
   success: boolean;
-  ledger_entry_id: string;
-  drive_file_id: string;
+  ledger_entry_id?: string;
+  drive_file_id?: string;
   message: string;
+  is_duplicate?: boolean;
+  duplicate_info?: DuplicateInfo[];
 }
 
 // Duplicate detection types

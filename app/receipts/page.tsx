@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertCircle, ArrowLeft, FolderOpen, FileUp } from "lucide-react";
 import Link from "next/link";
 import type { ReimbursementStatus } from "@/types";
 
@@ -42,7 +42,33 @@ function UploadStep() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Mode Switcher */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="p-4 border-2 border-primary rounded-lg bg-primary/5">
+          <div className="flex items-center gap-3">
+            <FileUp className="w-8 h-8 text-primary" />
+            <div>
+              <p className="font-medium">Single Receipt</p>
+              <p className="text-sm text-muted-foreground">Upload one receipt at a time</p>
+            </div>
+          </div>
+        </div>
+        
+        <Link href="/receipts/bulk-import">
+          <div className="p-4 border-2 border-border rounded-lg hover:border-primary hover:bg-secondary transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <FolderOpen className="w-8 h-8 text-muted-foreground" />
+              <div>
+                <p className="font-medium">Bulk Import</p>
+                <p className="text-sm text-muted-foreground">Import multiple receipts with duplicate detection</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Single Upload Area */}
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
