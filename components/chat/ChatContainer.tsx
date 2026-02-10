@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react";
 import { useChatStore } from "@/lib/stores/chat";
 import { cn } from "@/lib/utils";
 import type { ChatMessage as ChatMessageType } from "@/types";
+import { DocumentWorkflowCard } from "@/components/chat/DocumentWorkflowCard";
 
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 
@@ -103,6 +104,13 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
         )}
       >
         <MarkdownRenderer content={message.content} />
+        {message.documentWorkflows && message.documentWorkflows.length > 0 && (
+          <div className="mt-3 space-y-3">
+            {message.documentWorkflows.map((workflow) => (
+              <DocumentWorkflowCard key={workflow.workflow_id} workflow={workflow} />
+            ))}
+          </div>
+        )}
         {message.role === "agent" && message.toolsCalled && message.toolsCalled.length > 0 && (
           <div className="mt-2 space-y-1 border-t border-border/50 pt-2">
             {message.toolsCalled.map((tool, idx) => (

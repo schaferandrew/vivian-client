@@ -4,6 +4,7 @@ import type {
   BulkImportConfirmResponse,
   BulkImportResponse,
   Chat,
+  ChatAttachmentInput,
   ChatListResponse,
   ChatMessageResponse,
   ChatWithMessages,
@@ -144,18 +145,24 @@ export async function sendChatMessage(
   sessionId: string | null,
   chatId: string | null,
   webSearchEnabled: boolean = false,
-  enabledMcpServers: string[] = []
+  enabledMcpServers: string[] = [],
+  attachments: ChatAttachmentInput[] = []
 ): Promise<ChatMessageResponse> {
   try {
+    const payload: Record<string, unknown> = {
+      message,
+      session_id: sessionId,
+      chat_id: chatId,
+      web_search_enabled: webSearchEnabled,
+      enabled_mcp_servers: enabledMcpServers,
+    };
+    if (attachments.length > 0) {
+      payload.attachments = attachments;
+    }
+
     return await fetchProxyApi<ChatMessageResponse>("/chat/message", {
       method: "POST",
-      body: JSON.stringify({
-        message,
-        session_id: sessionId,
-        chat_id: chatId,
-        web_search_enabled: webSearchEnabled,
-        enabled_mcp_servers: enabledMcpServers,
-      }),
+      body: JSON.stringify(payload),
     });
   } catch (error) {
     const apiError = error as ApiError;
