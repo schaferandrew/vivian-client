@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Globe, Loader2, Paperclip, Plus, Send, X } from "lucide-react";
+import { CheckCircle2, Globe, Loader2, Paperclip, Plus, Send, X } from "lucide-react";
 
 import { useChatStore } from "@/lib/stores/chat";
 import { useModelStore } from "@/lib/stores/model";
@@ -16,6 +16,8 @@ export function ChatInput() {
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachmentInput[]>([]);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [recentAttachmentSuccess, setRecentAttachmentSuccess] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mcpMenuRef = useRef<HTMLDivElement>(null);
@@ -83,7 +85,9 @@ export function ChatInput() {
     const isPdf =
       file.type.toLowerCase().includes("pdf") || file.name.toLowerCase().endsWith(".pdf");
     if (!isPdf) {
-      setAttachmentError("Only PDF receipts are supported right now.");
+      setAttachmentError(
+        `Only PDF receipts are supported right now. "${file.name}" wasn't a PDF.`
+      );
       return;
     }
 
@@ -99,6 +103,10 @@ export function ChatInput() {
           mime_type: file.type || "application/pdf",
         },
       ]);
+      setRecentAttachmentSuccess(true);
+      setTimeout(() => {
+        setRecentAttachmentSuccess(false);
+      }, 450);
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : "Failed to upload receipt.");
     } finally {
@@ -154,11 +162,15 @@ export function ChatInput() {
       }));
 
       await fetchChats();
+      const attachmentAcknowledgement =
+        outgoingAttachments.length > 0
+          ? "Receipt received. I parsed it and need your confirmation below.\n\n"
+          : "";
 
       addMessage({
         id: (Date.now() + 1).toString(),
         role: "agent",
-        content: response.response,
+        content: `${attachmentAcknowledgement}${response.response}`,
         timestamp: new Date(),
         toolsCalled: response.tools_called ?? [],
         documentWorkflows: response.document_workflows ?? [],
@@ -219,14 +231,37 @@ export function ChatInput() {
     <form onSubmit={handleSubmit} className="bg-background shrink-0">
       <div className="max-w-3xl mx-auto px-4 pb-4 pt-3">
         <div
-          className="border border-border rounded-2xl bg-card"
-          onDragOver={(e) => e.preventDefault()}
+          className={`border rounded-2xl bg-card transition-colors ${
+            isDragActive
+              ? "border-[var(--primary-500)] bg-[var(--primary-50)]"
+              : "border-border"
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!isDragActive) {
+              setIsDragActive(true);
+            }
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            if (e.currentTarget.contains(e.relatedTarget as Node)) {
+              return;
+            }
+            setIsDragActive(false);
+          }}
           onDrop={(e) => {
             e.preventDefault();
+            setIsDragActive(false);
             const droppedFile = e.dataTransfer.files?.[0] || null;
             void handleAttachFile(droppedFile);
           }}
         >
+          {isDragActive && (
+            <div className="px-4 pt-3 text-xs font-medium text-[var(--primary-700)]">
+              Drop PDF receipt to upload
+            </div>
+          )}
+
           <Textarea
             ref={textareaRef}
             value={message}
@@ -278,7 +313,7 @@ export function ChatInput() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingAttachment}
                 className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-secondary transition-colors text-muted-foreground disabled:opacity-70"
-                title="Attach receipt"
+                title="Attach receipt (PDF)"
               >
                 {isUploadingAttachment ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -360,9 +395,17 @@ export function ChatInput() {
               className="h-8 px-3 rounded-md"
             >
               <Send className="w-4 h-4 mr-2" />
-              Send
+              {pendingAttachments.length > 0 ? "Send & Process" : "Send"}
             </Button>
           </div>
+          {recentAttachmentSuccess && (
+            <div className="px-3 pb-2">
+              <div className="inline-flex items-center gap-1 rounded-md bg-[var(--success-100)] px-2 py-1 text-[11px] text-[var(--success-700)] animate-in fade-in duration-200">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Receipt attached</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </form>
