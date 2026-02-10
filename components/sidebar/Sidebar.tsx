@@ -32,7 +32,7 @@ export function Sidebar() {
           {!sidebarCollapsed && (
             <Link href="/">
               <Image
-                src="/vivian.svg"
+                src="/vivian-square.svg"
                 alt="Vivian"
                 width={40}
                 height={40}

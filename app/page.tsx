@@ -11,7 +11,7 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-4 py-6">
           <div className="flex items-center">
             <Image
-              src="/vivian.svg"
+              src="/vivian-square.svg"
               alt="Vivian"
               width={48}
               height={48}
