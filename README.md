@@ -7,6 +7,7 @@ A Next.js web application for the Vivian Household Agent system. This is a PWA-e
 - **Chat Interface**: Real-time WebSocket chat with Vivian agent
 - **Receipt Upload**: Upload and process medical receipts with OCR
 - **HSA Dashboard**: View unreimbursed balances and expense summaries
+- **Email/Password Login**: Session-based auth with access-token refresh
 - **PWA Support**: Installable on iOS and Android devices
 - **Responsive Design**: Mobile-first, works on all screen sizes
 
@@ -45,6 +46,7 @@ A Next.js web application for the Vivian Household Agent system. This is a PWA-e
    ```env
    NEXT_PUBLIC_AGENT_API_URL=http://localhost:8000/api/v1
    NEXT_PUBLIC_AGENT_WS_URL=ws://localhost:8000/api/v1/chat/ws
+   AGENT_API_URL=http://localhost:8000/api/v1
    ```
 
 4. **Run the development server:**
@@ -101,6 +103,16 @@ Note: When running in Docker, the client uses `host.docker.internal` to connect 
 |----------|-------------|---------|
 | `NEXT_PUBLIC_AGENT_API_URL` | REST API base URL | `http://localhost:8000/api/v1` |
 | `NEXT_PUBLIC_AGENT_WS_URL` | WebSocket URL | `ws://localhost:8000/api/v1/chat/ws` |
+| `AGENT_API_URL` | Server-side API URL for auth/integration proxy routes | `http://localhost:8000/api/v1` |
+
+## Auth Flow
+
+- App routes are protected by `middleware.ts` and redirect unauthenticated users to `/login`.
+- Login POSTs to `/api/auth/login`, which stores:
+  - access token cookie (`vivian_access_token`)
+  - refresh token cookie (`vivian_refresh_token`)
+- API calls use bearer auth and retry once after `/api/auth/refresh` when access tokens expire.
+- Logout uses `/api/auth/logout` to revoke refresh session and clear cookies.
 
 ## Project Structure
 

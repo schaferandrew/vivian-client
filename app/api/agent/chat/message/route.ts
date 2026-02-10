@@ -1,28 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
-const AGENT_API_URL =
-  process.env.AGENT_API_URL ||
-  process.env.NEXT_PUBLIC_AGENT_API_URL ||
-  "http://localhost:8000/api/v1";
+import { CACHE_TAGS } from "@/app/api/agent/_utils/cache-tags";
+import { handleRequest } from "@/app/api/agent/_utils/handle-request";
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const res = await fetch(`${AGENT_API_URL}/chat/message`, {
+function extractChatId(payload: unknown): string | null {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    return null;
+  }
+  const chatId = (payload as { chat_id?: unknown }).chat_id;
+  return typeof chatId === "string" && chatId ? chatId : null;
+}
+
+export async function POST(request: NextRequest) {
+  const body = await request.json().catch(() => ({}));
+
+  return handleRequest({
+    request,
+    backendPath: "/chat/message",
+    init: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return NextResponse.json(data, { status: res.status });
-    }
-    return NextResponse.json(data);
-  } catch (err) {
-    console.error("Chat proxy error:", err);
-    return NextResponse.json(
-      { error: "Could not reach the chat server. Is the backend running?" },
-      { status: 502 }
-    );
-  }
+    },
+    revalidateTags: (payload) => {
+      const chatId = extractChatId(payload);
+      return chatId ? [CACHE_TAGS.chatList, CACHE_TAGS.chat(chatId)] : [CACHE_TAGS.chatList];
+    },
+    fallbackError: "Could not reach the chat server. Is the backend running?",
+  });
 }

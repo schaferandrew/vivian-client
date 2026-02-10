@@ -4,6 +4,7 @@ import type { ChatMessage, Chat, MCPServerInfo, ToolCallInfo } from "@/types";
 import {
   getChats,
   getChat,
+  createChat as apiCreateChat,
   deleteChat as apiDeleteChat,
   getMcpServers,
 } from "@/lib/api/client";
@@ -57,7 +58,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       messages: [],
       chats: [],
       currentChatId: null,
@@ -141,10 +142,19 @@ export const useChatStore = create<ChatState>()(
       },
 
       createNewChat: async () => {
-        set({
-          currentChatId: null,
-          messages: [],
-        });
+        set({ currentChatId: null, messages: [] });
+
+        try {
+          const chat = await apiCreateChat({ title: "New Chat" });
+          set((state) => ({
+            currentChatId: chat.id,
+            messages: [],
+            chats: [chat, ...state.chats.filter((existing) => existing.id !== chat.id)],
+          }));
+          await get().fetchChats();
+        } catch (error) {
+          console.error("Failed to create chat:", error);
+        }
       },
 
       deleteChat: async (chatId: string) => {

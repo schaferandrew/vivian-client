@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MessageSquare, Upload, Wallet, Settings } from "lucide-react";
+import { ProfileMenu } from "@/components/ui/profile-menu";
 
 export default function HomePage() {
   return (
@@ -9,19 +10,23 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-card border-b border-border">
         <div className="max-w-5xl mx-auto px-4 py-6">
-          <div className="flex items-center">
-            <Image
-              src="/vivian-square.svg"
-              alt="Vivian"
-              width={48}
-              height={48}
-              className="shrink-0 rounded-xl"
-              priority
-            />
-            <div className="ml-4">
-              <h1 className="text-2xl font-bold text-foreground">Vivian</h1>
-              <p className="text-sm text-muted-foreground">Your household assistant</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center">
+              <Image
+                src="/vivian-square.svg"
+                alt="Vivian"
+                width={48}
+                height={48}
+                className="shrink-0 rounded-xl"
+                priority
+              />
+              <div className="ml-4">
+                <h1 className="text-2xl font-bold text-foreground">Vivian</h1>
+                <p className="text-sm text-muted-foreground">Your household assistant</p>
+              </div>
             </div>
+
+            <ProfileMenu />
           </div>
         </div>
       </header>

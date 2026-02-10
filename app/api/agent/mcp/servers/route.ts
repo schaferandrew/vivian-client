@@ -1,35 +1,33 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
-const AGENT_API_URL =
-  process.env.AGENT_API_URL ||
-  process.env.NEXT_PUBLIC_AGENT_API_URL ||
-  "http://localhost:8000/api/v1";
+import { CACHE_TAGS } from "@/app/api/agent/_utils/cache-tags";
+import { handleRequest } from "@/app/api/agent/_utils/handle-request";
 
-export async function GET() {
-  try {
-    const res = await fetch(`${AGENT_API_URL}/mcp/servers`, { cache: "no-store" });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return NextResponse.json(data, { status: res.status });
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("MCP servers proxy GET failed:", error);
-    return NextResponse.json({ error: "Could not load MCP servers." }, { status: 502 });
-  }
+export async function GET(request: NextRequest) {
+  return handleRequest({
+    request,
+    backendPath: "/mcp/servers",
+    init: {
+      method: "GET",
+      cache: "force-cache",
+      next: { tags: [CACHE_TAGS.mcpServers] },
+    },
+    fallbackError: "Could not load MCP servers.",
+  });
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const res = await fetch(`${AGENT_API_URL}/mcp/servers/enabled`, {
+export async function POST(request: NextRequest) {
+  const body = await request.json().catch(() => ({}));
+
+  return handleRequest({
+    request,
+    backendPath: "/mcp/servers/enabled",
+    init: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return NextResponse.json(data, { status: res.status });
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("MCP servers proxy POST failed:", error);
-    return NextResponse.json({ error: "Could not update MCP servers." }, { status: 502 });
-  }
+    },
+    revalidateTags: [CACHE_TAGS.mcpServers],
+    fallbackError: "Could not update MCP servers.",
+  });
 }

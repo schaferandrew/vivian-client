@@ -2,13 +2,13 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Wallet, ArrowLeft, TrendingUp, FileText } from "lucide-react";
 import Link from "next/link";
-import { getUnreimbursedBalance } from "@/lib/api/client";
+import { getUnreimbursedBalanceServer } from "@/lib/api/server";
 
 export default async function HSAPage() {
   let balance = { total_amount: 0, count: 0 };
   
   try {
-    balance = await getUnreimbursedBalance();
+    balance = await getUnreimbursedBalanceServer();
   } catch (error) {
     console.error("Failed to fetch balance:", error);
   }

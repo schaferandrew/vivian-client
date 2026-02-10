@@ -2,17 +2,21 @@ import { NextRequest } from "next/server";
 
 import { handleRequest } from "@/app/api/agent/_utils/handle-request";
 
-export async function POST(request: NextRequest) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ membershipId: string }> }
+) {
+  const { membershipId } = await params;
   const body = await request.json().catch(() => ({}));
 
   return handleRequest({
     request,
-    backendPath: "/mcp/test/add",
+    backendPath: `/auth/home-settings/members/${membershipId}`,
     init: {
-      method: "POST",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     },
-    fallbackError: "Could not run MCP test.",
+    fallbackError: "Unable to update member role.",
   });
 }

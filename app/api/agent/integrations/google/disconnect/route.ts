@@ -1,30 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
-const AGENT_API_URL =
-  process.env.AGENT_API_URL ||
-  process.env.NEXT_PUBLIC_AGENT_API_URL ||
-  "http://localhost:8000/api/v1";
+import { handleRequest } from "@/app/api/agent/_utils/handle-request";
 
-export async function POST() {
-  try {
-    const response = await fetch(`${AGENT_API_URL}/integrations/google/disconnect`, {
+export async function POST(request: NextRequest) {
+  return handleRequest({
+    request,
+    backendPath: "/integrations/google/disconnect",
+    init: {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
-    }
-
-    return NextResponse.json(data);
-  } catch (err) {
-    console.error("Google disconnect proxy error:", err);
-    return NextResponse.json(
-      { error: "Could not reach backend integrations service." },
-      { status: 502 }
-    );
-  }
+      headers: { "Content-Type": "application/json" },
+    },
+    fallbackError: "Could not reach backend integrations service.",
+  });
 }
