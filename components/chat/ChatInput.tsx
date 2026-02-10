@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
 import { Globe, Loader2, Paperclip, Plus, Send, X } from "lucide-react";
 
 import { useChatStore } from "@/lib/stores/chat";
@@ -287,14 +286,6 @@ export function ChatInput() {
                   <Paperclip className="w-4 h-4" />
                 )}
               </button>
-
-              <Link
-                href="/receipts"
-                className="text-[11px] text-muted-foreground hover:text-foreground px-1"
-                title="Open full receipts page"
-              >
-                Bulk
-              </Link>
 
               <button
                 type="button"
