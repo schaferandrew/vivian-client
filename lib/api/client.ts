@@ -1,115 +1,221 @@
-// API Configuration
-const API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000/api/v1";
+import { authenticatedFetch } from "@/lib/auth/client";
+import type {
+  BulkImportConfirmItem,
+  BulkImportConfirmResponse,
+  BulkImportResponse,
+  Chat,
+  ChatListResponse,
+  ChatMessageResponse,
+  ChatWithMessages,
+  CheckDuplicateResponse,
+  ConfirmReceiptRequest,
+  ConfirmReceiptResponse,
+  ExpenseSchema,
+  GenerateSummaryResponse,
+  MCPEnabledUpdateResponse,
+  MCPServersResponse,
+  MCPTestAddResponse,
+  ModelSelectResponse,
+  ModelsResponse,
+  ReceiptParseResponse,
+  ReceiptUploadResponse,
+  ReimbursementStatus,
+  UnreimbursedBalanceResponse,
+} from "@/types";
 
-// Helper for making API requests
-async function fetchApi<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<T> {
-  const url = `${API_URL}${endpoint}`;
-  
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+const DIRECT_API_URL =
+  process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000/api/v1";
+const PROXY_API_URL = "/api/agent";
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API Error: ${response.status} - ${error}`);
+type ApiError = Error & {
+  status?: number;
+  data?: unknown;
+  code?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getMessageFromPayload(payload: unknown): string | null {
+  if (!isRecord(payload)) {
+    return typeof payload === "string" && payload.trim() ? payload.trim() : null;
   }
 
-  return response.json();
+  const candidate = [payload.error, payload.message, payload.detail].find(
+    (value) => typeof value === "string" && value
+  );
+
+  return typeof candidate === "string" ? candidate : null;
+}
+
+async function parseResponsePayload(response: Response): Promise<unknown> {
+  if (response.status === 204 || response.status === 205) {
+    return null;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return response.json().catch(() => null);
+  }
+
+  const text = await response.text().catch(() => "");
+  return text.trim() ? { message: text } : null;
+}
+
+function buildApiError(response: Response, payload: unknown): ApiError {
+  const message =
+    getMessageFromPayload(payload) ?? `API Error: ${response.status} ${response.statusText}`;
+  const error = new Error(message) as ApiError;
+  error.status = response.status;
+  error.data = payload;
+  return error;
+}
+
+function withJsonHeaders(init?: RequestInit): RequestInit {
+  const headers = new Headers(init?.headers ?? {});
+  const body = init?.body;
+  const hasBody = body !== undefined && body !== null;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
+  if (hasBody && !isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return {
+    ...init,
+    headers,
+  };
+}
+
+async function handleRequest<T>(
+  url: string,
+  init?: RequestInit,
+  options?: { expectNoContent?: boolean }
+): Promise<T> {
+  const response = await authenticatedFetch(url, init);
+  const payload = await parseResponsePayload(response);
+
+  if (!response.ok) {
+    throw buildApiError(response, payload);
+  }
+
+  if (options?.expectNoContent || response.status === 204 || payload === null) {
+    return undefined as T;
+  }
+
+  return payload as T;
+}
+
+async function fetchDirectApi<T>(
+  endpoint: string,
+  init?: RequestInit,
+  options?: { expectNoContent?: boolean }
+): Promise<T> {
+  return handleRequest<T>(
+    `${DIRECT_API_URL}${endpoint}`,
+    withJsonHeaders(init),
+    options
+  );
+}
+
+async function fetchProxyApi<T>(
+  endpoint: string,
+  init?: RequestInit,
+  options?: { expectNoContent?: boolean }
+): Promise<T> {
+  return handleRequest<T>(
+    `${PROXY_API_URL}${endpoint}`,
+    withJsonHeaders(init),
+    options
+  );
 }
 
 // Create a new chat session
 export async function createSession(): Promise<{ session_id: string; created_at: string }> {
-  const res = await fetch(`${API_URL}/chat/sessions`, {
+  return fetchProxyApi("/chat/sessions", {
     method: "POST",
   });
-  if (!res.ok) {
-    throw new Error("Failed to create session");
-  }
-  return res.json();
 }
 
-// Simple chat message - returns agent response (via same-origin proxy so it works regardless of how you open the app)
+// Simple chat message
 export async function sendChatMessage(
   message: string,
   sessionId: string | null,
   chatId: string | null,
   webSearchEnabled: boolean = false,
   enabledMcpServers: string[] = []
-): Promise<import("@/types").ChatMessageResponse> {
-  const res = await fetch("/api/agent/chat/message", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message,
-      session_id: sessionId,
-      chat_id: chatId,
-      web_search_enabled: webSearchEnabled,
-      enabled_mcp_servers: enabledMcpServers,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: string; message?: string; detail?: string };
-    if (res.status === 402 && (err?.error === "insufficient_credits" || err?.message)) {
-      const msg = err.message ?? "Your account has insufficient credits. Add more credits and try again.";
-      const e = new Error(msg) as Error & { code?: string };
-      e.code = "insufficient_credits";
-      throw e;
+): Promise<ChatMessageResponse> {
+  try {
+    return await fetchProxyApi<ChatMessageResponse>("/chat/message", {
+      method: "POST",
+      body: JSON.stringify({
+        message,
+        session_id: sessionId,
+        chat_id: chatId,
+        web_search_enabled: webSearchEnabled,
+        enabled_mcp_servers: enabledMcpServers,
+      }),
+    });
+  } catch (error) {
+    const apiError = error as ApiError;
+    const payload = isRecord(apiError.data) ? apiError.data : {};
+
+    if (apiError.status === 402 && (payload.error === "insufficient_credits" || payload.message)) {
+      const msg =
+        (typeof payload.message === "string" && payload.message) ||
+        "Your account has insufficient credits. Add more credits and try again.";
+      const enriched = new Error(msg) as ApiError;
+      enriched.code = "insufficient_credits";
+      throw enriched;
     }
-    if (res.status === 429 && (err?.error === "rate_limit" || err?.message)) {
-      const msg = err.message ?? "Rate limit exceeded. Please wait a moment and try again.";
-      const e = new Error(msg) as Error & { code?: string };
-      e.code = "rate_limit";
-      throw e;
+
+    if (apiError.status === 429 && (payload.error === "rate_limit" || payload.message)) {
+      const msg =
+        (typeof payload.message === "string" && payload.message) ||
+        "Rate limit exceeded. Please wait a moment and try again.";
+      const enriched = new Error(msg) as ApiError;
+      enriched.code = "rate_limit";
+      throw enriched;
     }
-    if (res.status === 404 && err?.error === "model_not_found") {
-      const msg = err.message ?? "Model not found or unavailable.";
-      const e = new Error(msg) as Error & { code?: string };
-      e.code = "model_not_found";
-      throw e;
+
+    if (apiError.status === 404 && payload.error === "model_not_found") {
+      const msg =
+        (typeof payload.message === "string" && payload.message) ||
+        "Model not found or unavailable.";
+      const enriched = new Error(msg) as ApiError;
+      enriched.code = "model_not_found";
+      throw enriched;
     }
-    throw new Error(err?.error ?? err?.detail ?? err?.message ?? `API Error: ${res.status}`);
+
+    throw error;
   }
-  return res.json();
 }
 
 // Upload receipt file
-export async function uploadReceipt(file: File): Promise<import("@/types").ReceiptUploadResponse> {
+export async function uploadReceipt(file: File): Promise<ReceiptUploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_URL}/receipts/upload`, {
+  return handleRequest<ReceiptUploadResponse>(`${DIRECT_API_URL}/receipts/upload`, {
     method: "POST",
     body: formData,
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Upload failed: ${error}`);
-  }
-
-  return response.json();
 }
 
 // Parse uploaded receipt
-export async function parseReceipt(tempFilePath: string): Promise<import("@/types").ReceiptParseResponse> {
-  return fetchApi("/receipts/parse", {
+export async function parseReceipt(tempFilePath: string): Promise<ReceiptParseResponse> {
+  return fetchDirectApi("/receipts/parse", {
     method: "POST",
     body: JSON.stringify({ temp_file_path: tempFilePath }),
   });
 }
 
 export async function checkReceiptDuplicate(
-  expenseData: import("@/types").ExpenseSchema,
+  expenseData: ExpenseSchema,
   fuzzyDays: number = 3
-): Promise<import("@/types").CheckDuplicateResponse> {
-  return fetchApi("/receipts/check-duplicate", {
+): Promise<CheckDuplicateResponse> {
+  return fetchDirectApi("/receipts/check-duplicate", {
     method: "POST",
     body: JSON.stringify({
       expense_data: expenseData,
@@ -120,130 +226,106 @@ export async function checkReceiptDuplicate(
 
 // Confirm and save receipt
 export async function confirmReceipt(
-  data: import("@/types").ConfirmReceiptRequest
-): Promise<import("@/types").ConfirmReceiptResponse> {
-  return fetchApi("/receipts/confirm", {
+  data: ConfirmReceiptRequest
+): Promise<ConfirmReceiptResponse> {
+  return fetchDirectApi("/receipts/confirm", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 // Get unreimbursed balance
-export async function getUnreimbursedBalance(): Promise<import("@/types").UnreimbursedBalanceResponse> {
-  return fetchApi("/ledger/balance/unreimbursed");
+export async function getUnreimbursedBalance(): Promise<UnreimbursedBalanceResponse> {
+  return fetchDirectApi("/ledger/balance/unreimbursed");
 }
 
-// Get available models (via same-origin proxy so model list and selection work like chat)
-export async function getModels(): Promise<import("@/types").ModelsResponse> {
-  const res = await fetch("/api/agent/chat/models");
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
-  }
-  return res.json();
+// Get available models
+export async function getModels(): Promise<ModelsResponse> {
+  return fetchProxyApi("/chat/models");
 }
 
-// Select a model (via same-origin proxy so the backend that serves chat uses this selection)
-export async function selectModel(modelId: string): Promise<import("@/types").ModelSelectResponse> {
-  const res = await fetch("/api/agent/chat/models/select", {
+// Select a model
+export async function selectModel(modelId: string): Promise<ModelSelectResponse> {
+  return fetchProxyApi("/chat/models/select", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model_id: modelId }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
-  }
-  return res.json();
 }
 
 // Chat history API functions
-export async function getChats(): Promise<import("@/types").ChatListResponse> {
-  return fetchApi("/chats/");
+export async function getChats(): Promise<ChatListResponse> {
+  return fetchProxyApi("/chats");
 }
 
-export async function getChat(chatId: string): Promise<import("@/types").ChatWithMessages> {
-  return fetchApi(`/chats/${chatId}/`);
+export async function getChat(chatId: string): Promise<ChatWithMessages> {
+  return fetchProxyApi(`/chats/${chatId}`);
 }
 
-export async function createChat(data?: { title?: string; model?: string }): Promise<import("@/types").Chat> {
-  return fetchApi("/chats/", {
+export async function createChat(data?: { title?: string; model?: string }): Promise<Chat> {
+  return fetchProxyApi("/chats", {
     method: "POST",
     body: JSON.stringify(data ?? { title: "New Chat" }),
   });
 }
 
 export async function deleteChat(chatId: string): Promise<void> {
-  await fetchApi(`/chats/${chatId}/`, {
-    method: "DELETE",
-  });
+  await fetchProxyApi<void>(
+    `/chats/${chatId}`,
+    {
+      method: "DELETE",
+    },
+    { expectNoContent: true }
+  );
 }
 
-export async function updateChatTitle(chatId: string, title: string): Promise<import("@/types").Chat> {
-  return fetchApi(`/chats/${chatId}/title`, {
+export async function updateChatTitle(chatId: string, title: string): Promise<Chat> {
+  return fetchProxyApi(`/chats/${chatId}/title`, {
     method: "PATCH",
     body: JSON.stringify({ title }),
   });
 }
 
-export async function generateSummary(chatId: string): Promise<import("@/types").GenerateSummaryResponse> {
-  return fetchApi(`/chats/${chatId}/generate-summary`, {
+export async function generateSummary(chatId: string): Promise<GenerateSummaryResponse> {
+  return fetchProxyApi(`/chats/${chatId}/generate-summary`, {
     method: "POST",
   });
 }
 
-export async function getMcpServers(): Promise<import("@/types").MCPServersResponse> {
-  const res = await fetch("/api/agent/mcp/servers", { cache: "no-store" });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
-  }
-  return res.json();
+export async function getMcpServers(): Promise<MCPServersResponse> {
+  return fetchProxyApi("/mcp/servers");
 }
 
 export async function updateEnabledMcpServers(
   enabledServerIds: string[]
-): Promise<import("@/types").MCPEnabledUpdateResponse> {
-  const res = await fetch("/api/agent/mcp/servers", {
+): Promise<MCPEnabledUpdateResponse> {
+  return fetchProxyApi("/mcp/servers", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ enabled_server_ids: enabledServerIds }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
-  }
-  return res.json();
 }
 
 export async function runMcpAdditionTest(
   a: number,
   b: number,
   serverId = "test_addition"
-): Promise<import("@/types").MCPTestAddResponse> {
-  const res = await fetch("/api/agent/mcp/test-add", {
+): Promise<MCPTestAddResponse> {
+  return fetchProxyApi("/mcp/test-add", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ a, b, server_id: serverId }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
-  }
-  return res.json();
 }
 
 // Bulk Import API functions
 export async function bulkImportScan(
   directoryPath: string,
   options?: {
-    statusOverride?: import("@/types").ReimbursementStatus;
+    statusOverride?: ReimbursementStatus;
     skipErrors?: boolean;
     checkDuplicates?: boolean;
     duplicateAction?: "skip" | "flag" | "ask";
   }
-): Promise<import("@/types").BulkImportResponse> {
-  return fetchApi("/receipts/bulk-import/scan", {
+): Promise<BulkImportResponse> {
+  return fetchDirectApi("/receipts/bulk-import/scan", {
     method: "POST",
     body: JSON.stringify({
       directory_path: directoryPath,
@@ -258,13 +340,13 @@ export async function bulkImportScan(
 export async function bulkImportScanTemp(
   tempFilePaths: string[],
   options?: {
-    statusOverride?: import("@/types").ReimbursementStatus;
+    statusOverride?: ReimbursementStatus;
     skipErrors?: boolean;
     checkDuplicates?: boolean;
     duplicateAction?: "skip" | "flag" | "ask";
   }
-): Promise<import("@/types").BulkImportResponse> {
-  return fetchApi("/receipts/bulk-import/scan-temp", {
+): Promise<BulkImportResponse> {
+  return fetchDirectApi("/receipts/bulk-import/scan-temp", {
     method: "POST",
     body: JSON.stringify({
       temp_file_paths: tempFilePaths,
@@ -277,11 +359,11 @@ export async function bulkImportScanTemp(
 }
 
 export async function bulkImportConfirm(
-  items: import("@/types").BulkImportConfirmItem[],
-  statusOverride?: import("@/types").ReimbursementStatus,
+  items: BulkImportConfirmItem[],
+  statusOverride?: ReimbursementStatus,
   force: boolean = false
-): Promise<import("@/types").BulkImportConfirmResponse> {
-  return fetchApi("/receipts/bulk-import/confirm", {
+): Promise<BulkImportConfirmResponse> {
+  return fetchDirectApi("/receipts/bulk-import/confirm", {
     method: "POST",
     body: JSON.stringify({
       items,

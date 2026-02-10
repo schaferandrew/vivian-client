@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
-const API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000/api/v1";
+import { CACHE_TAGS } from "@/app/api/agent/_utils/cache-tags";
+import { handleRequest } from "@/app/api/agent/_utils/handle-request";
 
 export async function GET(
   request: NextRequest,
@@ -8,20 +9,16 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const response = await fetch(`${API_URL}/chats/${id}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
+  return handleRequest({
+    request,
+    backendPath: `/chats/${id}`,
+    init: {
+      method: "GET",
+      cache: "force-cache",
+      next: { tags: [CACHE_TAGS.chat(id)] },
     },
+    fallbackError: "Could not load chat.",
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    return NextResponse.json({ error }, { status: response.status });
-  }
-
-  const data = await response.json();
-  return NextResponse.json(data);
 }
 
 export async function PATCH(
@@ -29,23 +26,19 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
 
-  const response = await fetch(`${API_URL}/chats/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
+  return handleRequest({
+    request,
+    backendPath: `/chats/${id}`,
+    init: {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
+    revalidateTags: [CACHE_TAGS.chatList, CACHE_TAGS.chat(id)],
+    fallbackError: "Could not update chat.",
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    return NextResponse.json({ error }, { status: response.status });
-  }
-
-  const data = await response.json();
-  return NextResponse.json(data);
 }
 
 export async function DELETE(
@@ -54,17 +47,11 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const response = await fetch(`${API_URL}/chats/${id}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
+  return handleRequest({
+    request,
+    backendPath: `/chats/${id}`,
+    init: { method: "DELETE" },
+    revalidateTags: [CACHE_TAGS.chatList, CACHE_TAGS.chat(id)],
+    fallbackError: "Could not delete chat.",
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    return NextResponse.json({ error }, { status: response.status });
-  }
-
-  return NextResponse.json({ success: true });
 }

@@ -1,44 +1,48 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { CACHE_TAGS } from "@/app/api/agent/_utils/cache-tags";
+import { handleRequest } from "@/app/api/agent/_utils/handle-request";
 
-const API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000/api/v1";
+function extractChatId(payload: unknown): string | null {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    return null;
+  }
+  const chatId = (payload as { id?: unknown }).id;
+  return typeof chatId === "string" && chatId ? chatId : null;
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const limit = searchParams.get("limit") || "50";
   const offset = searchParams.get("offset") || "0";
+  const query = new URLSearchParams({ limit, offset }).toString();
 
-  const response = await fetch(`${API_URL}/chats?limit=${limit}&offset=${offset}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
+  return handleRequest({
+    request,
+    backendPath: `/chats/?${query}`,
+    init: {
+      method: "GET",
+      cache: "force-cache",
+      next: { tags: [CACHE_TAGS.chatList] },
     },
+    fallbackError: "Could not load chats.",
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    return NextResponse.json({ error }, { status: response.status });
-  }
-
-  const data = await response.json();
-  return NextResponse.json(data);
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
 
-  const response = await fetch(`${API_URL}/chats`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  return handleRequest({
+    request,
+    backendPath: "/chats/",
+    init: {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
+    revalidateTags: (payload) => {
+      const chatId = extractChatId(payload);
+      return chatId ? [CACHE_TAGS.chatList, CACHE_TAGS.chat(chatId)] : [CACHE_TAGS.chatList];
+    },
+    fallbackError: "Could not create chat.",
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    return NextResponse.json({ error }, { status: response.status });
-  }
-
-  const data = await response.json();
-  return NextResponse.json(data, { status: 201 });
 }
