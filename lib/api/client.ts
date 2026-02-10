@@ -17,19 +17,8 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    const errorJson = await response.json().catch(() => null) as {
-      detail?: string;
-      error?: string;
-      message?: string;
-    } | null;
-    const errorText = await response.text().catch(() => "");
-    const detail =
-      errorJson?.detail ||
-      errorJson?.error ||
-      errorJson?.message ||
-      errorText ||
-      `Request failed (${response.status})`;
-    throw new Error(detail);
+    const error = await response.text();
+    throw new Error(`API Error: ${response.status} - ${error}`);
   }
 
   return response.json();
@@ -116,36 +105,27 @@ export async function parseReceipt(tempFilePath: string): Promise<import("@/type
   });
 }
 
+export async function checkReceiptDuplicate(
+  expenseData: import("@/types").ExpenseSchema,
+  fuzzyDays: number = 3
+): Promise<import("@/types").CheckDuplicateResponse> {
+  return fetchApi("/receipts/check-duplicate", {
+    method: "POST",
+    body: JSON.stringify({
+      expense_data: expenseData,
+      fuzzy_days: fuzzyDays,
+    }),
+  });
+}
+
 // Confirm and save receipt
 export async function confirmReceipt(
   data: import("@/types").ConfirmReceiptRequest
 ): Promise<import("@/types").ConfirmReceiptResponse> {
-  const response = await fetch(`${API_URL}/receipts/confirm`, {
+  return fetchApi("/receipts/confirm", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-
-  const payload = (await response.json().catch(() => ({}))) as import("@/types").ConfirmReceiptResponse & {
-    detail?: string;
-    error?: string;
-  };
-  if (!response.ok) {
-    const error = new Error(
-      payload.message ||
-      payload.detail ||
-      payload.error ||
-      `Request failed (${response.status})`
-    ) as Error & {
-      drive_upload_success?: boolean;
-      ledger_update_success?: boolean;
-    };
-    error.drive_upload_success = payload.drive_upload_success;
-    error.ledger_update_success = payload.ledger_update_success;
-    throw error;
-  }
-
-  return payload;
 }
 
 // Get unreimbursed balance
@@ -251,4 +231,62 @@ export async function runMcpAdditionTest(
     throw new Error(err?.error ?? err?.detail ?? `API Error: ${res.status}`);
   }
   return res.json();
+}
+
+// Bulk Import API functions
+export async function bulkImportScan(
+  directoryPath: string,
+  options?: {
+    statusOverride?: import("@/types").ReimbursementStatus;
+    skipErrors?: boolean;
+    checkDuplicates?: boolean;
+    duplicateAction?: "skip" | "flag" | "ask";
+  }
+): Promise<import("@/types").BulkImportResponse> {
+  return fetchApi("/receipts/bulk-import/scan", {
+    method: "POST",
+    body: JSON.stringify({
+      directory_path: directoryPath,
+      status_override: options?.statusOverride,
+      skip_errors: options?.skipErrors ?? true,
+      check_duplicates: options?.checkDuplicates ?? true,
+      duplicate_action: options?.duplicateAction ?? "flag",
+    }),
+  });
+}
+
+export async function bulkImportScanTemp(
+  tempFilePaths: string[],
+  options?: {
+    statusOverride?: import("@/types").ReimbursementStatus;
+    skipErrors?: boolean;
+    checkDuplicates?: boolean;
+    duplicateAction?: "skip" | "flag" | "ask";
+  }
+): Promise<import("@/types").BulkImportResponse> {
+  return fetchApi("/receipts/bulk-import/scan-temp", {
+    method: "POST",
+    body: JSON.stringify({
+      temp_file_paths: tempFilePaths,
+      status_override: options?.statusOverride,
+      skip_errors: options?.skipErrors ?? true,
+      check_duplicates: options?.checkDuplicates ?? true,
+      duplicate_action: options?.duplicateAction ?? "flag",
+    }),
+  });
+}
+
+export async function bulkImportConfirm(
+  items: import("@/types").BulkImportConfirmItem[],
+  statusOverride?: import("@/types").ReimbursementStatus,
+  force: boolean = false
+): Promise<import("@/types").BulkImportConfirmResponse> {
+  return fetchApi("/receipts/bulk-import/confirm", {
+    method: "POST",
+    body: JSON.stringify({
+      items,
+      status_override: statusOverride,
+      force,
+    }),
+  });
 }

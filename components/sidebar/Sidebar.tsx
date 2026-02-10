@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, SquarePen } from "lucide-react";
 import Image from "next/image";
 import { ChatList } from "./ChatList";
@@ -29,14 +30,16 @@ export function Sidebar() {
       <div className="p-3 border-b border-[var(--neutral-200)] shrink-0">
         <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "justify-between"}`}>
           {!sidebarCollapsed && (
-            <Image
-              src="/vivian-square.svg"
-              alt="Vivian"
-              width={32}
-              height={32}
-              className="shrink-0 rounded-xl"
-              priority
-            />
+            <Link href="/">
+              <Image
+                src="/vivian-square.svg"
+                alt="Vivian"
+                width={40}
+                height={40}
+                className="shrink-0 rounded-xl"
+                priority
+              />
+            </Link>
           )}
           <button
             onClick={toggleSidebar}

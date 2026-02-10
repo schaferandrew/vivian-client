@@ -46,6 +46,21 @@ export interface ReceiptParseResponse {
   parsed_data: ParsedReceipt;
   needs_review: boolean;
   temp_file_path: string;
+  is_duplicate?: boolean;
+  duplicate_info?: DuplicateInfo[];
+  duplicate_check_error?: string;
+}
+
+export interface CheckDuplicateRequest {
+  expense_data: ExpenseSchema;
+  fuzzy_days?: number;
+}
+
+export interface CheckDuplicateResponse {
+  is_duplicate: boolean;
+  duplicate_info: DuplicateInfo[];
+  recommendation: string;
+  check_error?: string;
 }
 
 export interface ConfirmReceiptRequest {
@@ -54,14 +69,101 @@ export interface ConfirmReceiptRequest {
   status: ReimbursementStatus;
   reimbursement_date?: string;
   notes?: string;
+  force?: boolean;
 }
 
 export interface ConfirmReceiptResponse {
   success: boolean;
   ledger_entry_id?: string;
   drive_file_id?: string;
-  drive_upload_success?: boolean;
-  ledger_update_success?: boolean;
+  message: string;
+  is_duplicate?: boolean;
+  duplicate_info?: DuplicateInfo[];
+}
+
+// Duplicate detection types
+export interface DuplicateInfo {
+  entry_id: string;
+  provider: string;
+  service_date?: string;
+  paid_date?: string;
+  amount: number;
+  hsa_eligible: boolean;
+  status: string;
+  reimbursement_date?: string;
+  drive_file_id?: string;
+  confidence: number;
+  match_type: "exact" | "fuzzy_date";
+  days_difference?: number;
+  message?: string;
+}
+
+// Bulk import types
+export interface BulkImportFileResult {
+  filename: string;
+  status: "new" | "duplicate_exact" | "duplicate_fuzzy" | "flagged" | "failed" | "skipped";
+  temp_file_path?: string;
+  expense?: ExpenseSchema;
+  confidence: number;
+  duplicate_info?: DuplicateInfo[];
+  error?: string;
+  warnings: string[];
+}
+
+export interface BulkImportSummary {
+  total_amount: number;
+  new_count: number;
+  duplicate_count: number;
+  flagged_count: number;
+  failed_count: number;
+  ready_to_import: number;
+}
+
+export interface BulkImportRequest {
+  directory_path: string;
+  status_override?: ReimbursementStatus;
+  skip_errors: boolean;
+  check_duplicates: boolean;
+  duplicate_action: "skip" | "flag" | "ask";
+}
+
+export interface BulkImportTempScanRequest {
+  temp_file_paths: string[];
+  status_override?: ReimbursementStatus;
+  skip_errors: boolean;
+  check_duplicates: boolean;
+  duplicate_action: "skip" | "flag" | "ask";
+}
+
+export interface BulkImportResponse {
+  total_files: number;
+  mode: "scan" | "import";
+  new: BulkImportFileResult[];
+  duplicates: BulkImportFileResult[];
+  flagged: BulkImportFileResult[];
+  failed: BulkImportFileResult[];
+  summary: BulkImportSummary;
+}
+
+export interface BulkImportConfirmRequest {
+  items: BulkImportConfirmItem[];
+  temp_file_paths: string[];
+  status_override?: ReimbursementStatus;
+  force?: boolean;
+}
+
+export interface BulkImportConfirmItem {
+  temp_file_path: string;
+  expense_data: ExpenseSchema;
+  status?: ReimbursementStatus;
+}
+
+export interface BulkImportConfirmResponse {
+  success: boolean;
+  imported_count: number;
+  failed_count: number;
+  total_amount: number;
+  results: BulkImportFileResult[];
   message: string;
 }
 
@@ -184,7 +286,9 @@ export interface ReceiptUploadState {
   step: "upload" | "review" | "confirm" | "success";
   tempFilePath?: string;
   parsedData?: ParsedReceipt;
-  resultMessage?: string;
+  parseIsDuplicate?: boolean;
+  parseDuplicateInfo?: DuplicateInfo[];
+  parseDuplicateCheckError?: string;
   isUploading: boolean;
   isParsing: boolean;
   error?: string;

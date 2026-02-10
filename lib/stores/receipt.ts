@@ -1,12 +1,16 @@
 import { create } from "zustand";
-import type { ReceiptUploadState, ParsedReceipt } from "@/types";
+import type { ReceiptUploadState, ParsedReceipt, DuplicateInfo } from "@/types";
 
 interface ReceiptStore extends ReceiptUploadState {
   // Actions
   setStep: (step: ReceiptUploadState["step"]) => void;
   setTempFilePath: (path: string) => void;
   setParsedData: (data: ParsedReceipt) => void;
-  setResultMessage: (message: string | undefined) => void;
+  setParseDuplicateInfo: (
+    isDuplicate: boolean,
+    duplicateInfo: DuplicateInfo[],
+    checkError?: string
+  ) => void;
   setUploading: (uploading: boolean) => void;
   setParsing: (parsing: boolean) => void;
   setError: (error: string | undefined) => void;
@@ -17,7 +21,9 @@ const initialState: ReceiptUploadState = {
   step: "upload",
   tempFilePath: undefined,
   parsedData: undefined,
-  resultMessage: undefined,
+  parseIsDuplicate: undefined,
+  parseDuplicateInfo: undefined,
+  parseDuplicateCheckError: undefined,
   isUploading: false,
   isParsing: false,
   error: undefined,
@@ -27,9 +33,21 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
   ...initialState,
 
   setStep: (step) => set({ step }),
-  setTempFilePath: (path) => set({ tempFilePath: path }),
+  setTempFilePath: (path) =>
+    set({
+      tempFilePath: path,
+      parsedData: undefined,
+      parseIsDuplicate: undefined,
+      parseDuplicateInfo: undefined,
+      parseDuplicateCheckError: undefined,
+    }),
   setParsedData: (data) => set({ parsedData: data }),
-  setResultMessage: (message) => set({ resultMessage: message }),
+  setParseDuplicateInfo: (isDuplicate, duplicateInfo, checkError) =>
+    set({
+      parseIsDuplicate: isDuplicate,
+      parseDuplicateInfo: duplicateInfo,
+      parseDuplicateCheckError: checkError,
+    }),
   setUploading: (uploading) => set({ isUploading: uploading }),
   setParsing: (parsing) => set({ isParsing: parsing }),
   setError: (error) => set({ error }),

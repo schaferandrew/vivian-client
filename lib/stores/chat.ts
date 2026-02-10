@@ -30,25 +30,15 @@ function parseToolsCalled(metadata: unknown): ToolCallInfo[] {
 }
 
 interface ChatState {
-  // Messages
   messages: ChatMessage[];
-
-  // Chat history
   chats: Chat[];
   currentChatId: string | null;
-
-  // Session (legacy)
   sessionId: string | null;
-
-  // UI state
   isLoading: boolean;
   sidebarCollapsed: boolean;
-
-  // Web search toggle (costs ~$0.02 per query, default OFF)
   webSearchEnabled: boolean;
   mcpServers: MCPServerInfo[];
 
-  // Actions
   addMessage: (message: ChatMessage) => void;
   setLoading: (loading: boolean) => void;
   clearMessages: () => void;
@@ -58,7 +48,6 @@ interface ChatState {
   setSessionId: (sessionId: string | null) => void;
   toggleSidebar: () => void;
 
-  // Chat history actions
   fetchChats: () => Promise<void>;
   fetchMcpServers: () => Promise<void>;
   loadChat: (chatId: string | null) => Promise<void>;

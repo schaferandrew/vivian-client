@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, Globe, Link2, Server, XCircle } from "lucide-react";
+import { ArrowLeft, Server, Globe, Link2, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useChatStore } from "@/lib/stores/chat";
 import { runMcpAdditionTest, updateEnabledMcpServers } from "@/lib/api/client";
 
@@ -23,6 +24,7 @@ const GOOGLE_DISCONNECT_PROXY_URL = "/api/agent/integrations/google/disconnect";
 const GOOGLE_OAUTH_START_PROXY_URL = "/api/agent/integrations/google/oauth/start";
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -40,32 +42,57 @@ export default function SettingsPage() {
     return `${window.location.origin}/settings`;
   }, []);
 
+  const connectUrl = useMemo(() => {
+    const returnTo = encodeURIComponent(settingsBaseUrl);
+    return `${GOOGLE_OAUTH_START_PROXY_URL}?return_to=${returnTo}`;
+  }, [settingsBaseUrl]);
+
+  const oauthStatus = searchParams.get("google");
+  const oauthMessage = searchParams.get("message");
+
   const fetchGoogleStatus = useCallback(async () => {
     setLoadingStatus(true);
     setStatusError(null);
     try {
       const response = await fetch(GOOGLE_STATUS_PROXY_URL, { cache: "no-store" });
+      const payload = (await response.json().catch(() => ({}))) as GoogleStatus & {
+        detail?: string;
+        error?: string;
+      };
+
       if (!response.ok) {
-        const payload = await response.json().catch(() => ({})) as {
-          detail?: string;
-          error?: string;
-          message?: string;
-        };
-        throw new Error(
-          payload.detail ||
-          payload.error ||
-          payload.message ||
-          `Status API failed (${response.status})`
-        );
+        throw new Error(payload.detail || payload.error || `Status API failed (${response.status})`);
       }
-      const data = (await response.json()) as GoogleStatus;
-      setGoogleStatus(data);
+
+      setGoogleStatus(payload);
     } catch (err) {
       setStatusError(err instanceof Error ? err.message : "Could not load Google status");
     } finally {
       setLoadingStatus(false);
     }
   }, []);
+
+  const handleDisconnect = useCallback(async () => {
+    setDisconnecting(true);
+    setStatusError(null);
+    try {
+      const response = await fetch(GOOGLE_DISCONNECT_PROXY_URL, {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        detail?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.detail || payload.error || "Disconnect failed");
+      }
+      await fetchGoogleStatus();
+    } catch (err) {
+      setStatusError(err instanceof Error ? err.message : "Disconnect failed");
+    } finally {
+      setDisconnecting(false);
+    }
+  }, [fetchGoogleStatus]);
 
   useEffect(() => {
     fetchGoogleStatus();
@@ -75,40 +102,14 @@ export default function SettingsPage() {
     fetchMcpServers();
   }, [fetchMcpServers]);
 
-  const connectUrl = useMemo(() => {
-    const returnTo = encodeURIComponent(settingsBaseUrl);
-    return `${GOOGLE_OAUTH_START_PROXY_URL}?return_to=${returnTo}`;
-  }, [settingsBaseUrl]);
+  const statusTone = googleStatus?.connected ? "text-[var(--success-600)]" : "text-[var(--error-700)]";
+  const statusIcon = googleStatus?.connected ? (
+    <CheckCircle2 className="w-4 h-4 text-[var(--success-600)]" />
+  ) : (
+    <XCircle className="w-4 h-4 text-[var(--error-700)]" />
+  );
 
-  const handleDisconnect = async () => {
-    setDisconnecting(true);
-    setStatusError(null);
-    try {
-      const response = await fetch(GOOGLE_DISCONNECT_PROXY_URL, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({})) as {
-          detail?: string;
-          error?: string;
-          message?: string;
-        };
-        throw new Error(
-          payload.detail ||
-          payload.error ||
-          payload.message ||
-          "Disconnect failed"
-        );
-      }
-      await fetchGoogleStatus();
-    } catch (err) {
-      setStatusError(err instanceof Error ? err.message : "Disconnect failed");
-    } finally {
-      setDisconnecting(false);
-    }
-  };
-
-  const handleToggleMcpServer = async (serverId: string) => {
+  const handleToggleMcpServer = useCallback(async (serverId: string) => {
     const nextServers = mcpServers.map((server) =>
       server.id === serverId ? { ...server, enabled: !server.enabled } : server
     );
@@ -122,9 +123,9 @@ export default function SettingsPage() {
       console.error("Failed to persist MCP server settings:", error);
       setStatusError(error instanceof Error ? error.message : "Could not update MCP servers");
     }
-  };
+  }, [mcpServers, setMcpServerEnabled]);
 
-  const handleRunAdditionTest = async () => {
+  const handleRunAdditionTest = useCallback(async () => {
     setRunningTest(true);
     setTestError(null);
     setTestResult(null);
@@ -141,14 +142,7 @@ export default function SettingsPage() {
     } finally {
       setRunningTest(false);
     }
-  };
-
-  const statusTone = googleStatus?.connected ? "text-[var(--success-600)]" : "text-[var(--error-700)]";
-  const statusIcon = googleStatus?.connected ? (
-    <CheckCircle2 className="w-4 h-4 text-[var(--success-600)]" />
-  ) : (
-    <XCircle className="w-4 h-4 text-[var(--error-700)]" />
-  );
+  }, [testA, testB]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -170,11 +164,15 @@ export default function SettingsPage() {
               <Server className="w-5 h-5 text-muted-foreground" />
               <CardTitle>API Configuration</CardTitle>
             </div>
-            <CardDescription>Configure the connection to your Vivian backend</CardDescription>
+            <CardDescription>
+              Configure the connection to your Vivian backend
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground block mb-2">API URL</label>
+              <label className="text-sm font-medium text-foreground block mb-2">
+                API URL
+              </label>
               <Input
                 value={process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000/api/v1"}
                 disabled
@@ -186,7 +184,9 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground block mb-2">WebSocket URL</label>
+              <label className="text-sm font-medium text-foreground block mb-2">
+                WebSocket URL
+              </label>
               <Input
                 value={process.env.NEXT_PUBLIC_AGENT_WS_URL || "ws://localhost:8000/api/v1/chat/ws"}
                 disabled
@@ -208,11 +208,25 @@ export default function SettingsPage() {
             <CardDescription>Connect Google Drive and Google Sheets for receipt automation</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {(oauthStatus === "connected" || oauthStatus === "error") && (
+              <div
+                className={`rounded-md border p-3 text-sm ${
+                  oauthStatus === "connected"
+                    ? "border-[var(--success-300)] bg-[var(--success-50)] text-[var(--success-700)]"
+                    : "border-[var(--error-300)] bg-[var(--error-50)] text-[var(--error-700)]"
+                }`}
+              >
+                {oauthStatus === "connected"
+                  ? "Google account connected."
+                  : `Google connection failed${oauthMessage ? `: ${oauthMessage}` : "."}`}
+              </div>
+            )}
+
             <div className="rounded-md border border-border p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   {statusIcon}
-                  <span className="font-medium">Google Drive</span>
+                  <span className="font-medium">Google Drive + Sheets</span>
                 </div>
                 {loadingStatus ? (
                   <span className="text-sm text-muted-foreground">Checking...</span>
@@ -233,7 +247,7 @@ export default function SettingsPage() {
                     <p>
                       Folder IDs or spreadsheet ID are incomplete. Set
                       `VIVIAN_API_MCP_REIMBURSED_FOLDER_ID`, `VIVIAN_API_MCP_UNREIMBURSED_FOLDER_ID`,
-                      and `VIVIAN_API_MCP_SHEETS_SPREADSHEET_ID` in API env.
+                      and `VIVIAN_API_MCP_SHEETS_SPREADSHEET_ID`.
                     </p>
                   )}
                 </div>
@@ -266,7 +280,7 @@ export default function SettingsPage() {
               <Server className="w-5 h-5 text-muted-foreground" />
               <CardTitle>MCP Servers</CardTitle>
             </div>
-            <CardDescription>Enable tools that can be used during chat and backend workflows</CardDescription>
+            <CardDescription>Enable tools used during chat and future receipt orchestration flows</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -322,12 +336,8 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                <strong>Version:</strong> 0.1.0
-              </p>
-              <p>
-                <strong>Client:</strong> Vivian Household Agent
-              </p>
+              <p><strong>Version:</strong> 0.1.0</p>
+              <p><strong>Client:</strong> Vivian Household Agent</p>
               <p className="text-xs text-[var(--neutral-400)] mt-4">
                 Built with Next.js, TypeScript, and Tailwind CSS
               </p>
