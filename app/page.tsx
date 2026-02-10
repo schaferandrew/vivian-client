@@ -18,7 +18,7 @@ export default function HomePage() {
               className="shrink-0 rounded-xl"
               priority
             />
-            <div>
+            <div className="ml-4">
               <h1 className="text-2xl font-bold text-foreground">Vivian</h1>
               <p className="text-sm text-muted-foreground">Your household assistant</p>
             </div>
