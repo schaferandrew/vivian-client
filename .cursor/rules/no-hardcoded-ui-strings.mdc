@@ -1,0 +1,19 @@
+---
+description: Ban hardcoded user-facing strings in code
+alwaysApply: true
+---
+
+# No Hardcoded UI Strings
+
+Do not introduce new hardcoded user-facing strings in TypeScript/TSX files.
+
+- Before adding UI copy, check `messages/en.json` for an existing key.
+- If no key exists, add one to `messages/en.json` and reference it via the translation layer.
+- Replace hardcoded literals in files you modify, unless doing so would create unrelated risk.
+- Use interpolation/plurals in translation resources instead of branching on raw strings in components.
+
+## PR Checklist
+
+- [ ] No new user-facing hardcoded strings were added.
+- [ ] Added/updated keys in `messages/en.json` for any new copy.
+- [ ] Components/pages reference translation keys, not inline copy.

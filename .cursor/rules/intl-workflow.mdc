@@ -1,0 +1,34 @@
+---
+description: Internationalization workflow for Vivian client UI strings
+alwaysApply: true
+---
+
+# Intl Workflow Rule
+
+When adding or changing user-facing copy in `vivian-client`, use the i18n workflow by default.
+
+- Treat `messages/en.json` as the source of truth for English UI text.
+- Add new copy as translation keys in `messages/en.json` instead of inline JSX/TS string literals.
+- Access text through a translation helper (`t("...")`, `useTranslations()`, or project equivalent), not hardcoded strings.
+- Prefer stable, namespaced keys (example: `settings.google.connectButton`), not raw sentence keys.
+- Reuse existing keys when wording is the same across screens.
+- Keep placeholders/interpolation in translations (example: `"lastConnected": "Last connected: {date}"`), not string concatenation in components.
+- For validation/errors and toast messages shown to users, use translation keys as well.
+
+## Migration Expectation
+
+If you touch a file that still has hardcoded user-facing strings, migrate those touched strings to `messages/en.json` in the same change when practical.
+
+## Scope
+
+This rule applies to:
+
+- `app/**`
+- `components/**`
+- client-side helpers that return user-visible copy
+
+This rule does not apply to:
+
+- internal logs/telemetry not shown to users
+- test-only fixture strings
+- API field names and protocol constants
