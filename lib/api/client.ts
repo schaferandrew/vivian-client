@@ -50,6 +50,18 @@ function getMessageFromPayload(payload: unknown): string | null {
   return typeof candidate === "string" ? candidate : null;
 }
 
+function getErrorCodeFromPayload(payload: unknown): string | null {
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  const candidate = [payload.code, payload.error_code, payload.error].find(
+    (value) => typeof value === "string" && value
+  );
+
+  return typeof candidate === "string" ? candidate : null;
+}
+
 async function parseResponsePayload(response: Response): Promise<unknown> {
   if (response.status === 204 || response.status === 205) {
     return null;
@@ -65,11 +77,27 @@ async function parseResponsePayload(response: Response): Promise<unknown> {
 }
 
 function buildApiError(response: Response, payload: unknown): ApiError {
-  const message =
-    getMessageFromPayload(payload) ?? `API Error: ${response.status} ${response.statusText}`;
+  const errorCode = getErrorCodeFromPayload(payload);
+  const rawMessage = getMessageFromPayload(payload);
+  const defaultMessage = `API Error: ${response.status} ${response.statusText}`;
+  let message = rawMessage ?? defaultMessage;
+
+  if (message === "server_error" || errorCode === "server_error") {
+    message = response.status >= 500
+      ? "Server error. Please try again."
+      : "Request failed. Please try again.";
+  }
+
+  if (response.status === 502 && message === defaultMessage) {
+    message = "Backend unavailable. Please try again shortly.";
+  }
+
   const error = new Error(message) as ApiError;
   error.status = response.status;
   error.data = payload;
+  if (errorCode) {
+    error.code = errorCode;
+  }
   return error;
 }
 

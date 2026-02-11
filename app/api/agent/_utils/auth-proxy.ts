@@ -20,6 +20,14 @@ type ProxyResult = {
   refreshedTokens: TokenPair | null;
 };
 
+function createProxyErrorResponse(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unable to reach backend";
+  return new Response(JSON.stringify({ error: message }), {
+    status: 502,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 export async function proxyBackendWithAuth(
   request: Request,
   backendPath: string,
@@ -43,23 +51,37 @@ export async function proxyBackendWithAuth(
     });
   };
 
-  let backendResponse = await callBackend(accessToken);
+  let backendResponse: Response;
+  try {
+    backendResponse = await callBackend(accessToken);
+  } catch (error) {
+    return { backendResponse: createProxyErrorResponse(error), refreshedTokens: null };
+  }
   if (backendResponse.status !== 401 || !refreshToken) {
     return { backendResponse, refreshedTokens: null };
   }
 
-  const refreshResponse = await fetch(`${AGENT_API_URL}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    cache: "no-store",
-  });
+  let refreshResponse: Response;
+  try {
+    refreshResponse = await fetch(`${AGENT_API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: "no-store",
+    });
+  } catch (error) {
+    return { backendResponse: createProxyErrorResponse(error), refreshedTokens: null };
+  }
 
   if (!refreshResponse.ok) {
     return { backendResponse, refreshedTokens: null };
   }
 
   const refreshedTokens = (await refreshResponse.json()) as TokenPair;
-  backendResponse = await callBackend(refreshedTokens.access_token);
+  try {
+    backendResponse = await callBackend(refreshedTokens.access_token);
+  } catch (error) {
+    return { backendResponse: createProxyErrorResponse(error), refreshedTokens: null };
+  }
   return { backendResponse, refreshedTokens };
 }

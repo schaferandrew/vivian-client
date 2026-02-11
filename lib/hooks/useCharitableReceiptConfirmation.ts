@@ -15,7 +15,7 @@ interface UseCharitableReceiptConfirmationReturn {
     tempFilePath: string;
     charitableData: CharitableDonationSchema;
     forceImport?: boolean;
-  }) => Promise<{ success: boolean };
+  }) => Promise<{ success: boolean }>;
   reset: () => void;
 }
 
