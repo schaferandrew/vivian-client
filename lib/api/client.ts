@@ -224,6 +224,24 @@ export async function sendChatMessage(
       throw enriched;
     }
 
+    if (apiError.status === 504 && payload.error === "ollama_timeout") {
+      const msg =
+        (typeof payload.message === "string" && payload.message) ||
+        "Ollama timed out. The model may still be loading — try again in a moment.";
+      const enriched = new Error(msg) as ApiError;
+      enriched.code = "ollama_timeout";
+      throw enriched;
+    }
+
+    if (apiError.status === 502 && payload.error === "ollama_unavailable") {
+      const msg =
+        (typeof payload.message === "string" && payload.message) ||
+        "Could not connect to Ollama. Is it running?";
+      const enriched = new Error(msg) as ApiError;
+      enriched.code = "ollama_unavailable";
+      throw enriched;
+    }
+
     throw error;
   }
 }
