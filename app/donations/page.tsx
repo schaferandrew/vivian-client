@@ -49,6 +49,20 @@ export default async function DonationsPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+        {(fetchError || (data.total === 0 && !summaryData)) && (
+          <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
+            <CardContent className="pt-4">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Configure Charitable Ledger:</strong> Go to{" "}
+                <Link href="/settings" className="underline hover:no-underline">
+                  Settings
+                </Link>{" "}
+                to connect your Google Sheet and Drive folder to enable donation tracking.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="bg-gradient-to-br from-[#FDE2FF] via-[#F0F4FF] to-[#E1F1FF]">
             <CardHeader>

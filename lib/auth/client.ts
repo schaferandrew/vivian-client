@@ -48,10 +48,22 @@ export async function authenticatedFetch(
 
   const refreshed = await refreshAccessToken();
   if (!refreshed) {
+    // Redirect to signin if refresh fails
+    if (typeof window !== "undefined") {
+      document.cookie = `${ACCESS_TOKEN_COOKIE}=; Max-Age=0; Path=/`;
+      window.location.href = "/login";
+    }
     return response;
   }
 
   const nextToken = getCookie(ACCESS_TOKEN_COOKIE);
   response = await doFetch(nextToken);
+  
+  // If still 401 after refresh, redirect to signin
+  if (response.status === 401 && typeof window !== "undefined") {
+    document.cookie = `${ACCESS_TOKEN_COOKIE}=; Max-Age=0; Path=/`;
+    window.location.href = "/login";
+  }
+  
   return response;
 }

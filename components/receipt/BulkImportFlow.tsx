@@ -565,6 +565,7 @@ function ConfirmStep() {
       const perItemStatus = options.itemStatusOverrides[tempPath];
       return {
         temp_file_path: tempPath,
+        category: r.category!,
         expense_data: r.expense!,
         status: perItemStatus && perItemStatus !== "default" ? perItemStatus : undefined,
       };

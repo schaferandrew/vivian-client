@@ -18,6 +18,7 @@ export function ChatInput() {
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const [recentAttachmentSuccess, setRecentAttachmentSuccess] = useState(false);
+  const [enabledMcpServerIds, setEnabledMcpServerIds] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mcpMenuRef = useRef<HTMLDivElement>(null);
@@ -28,7 +29,6 @@ export function ChatInput() {
     setWebSearchEnabled,
     mcpServers,
     fetchMcpServers,
-    setMcpServerEnabled,
     fetchChats,
   } = useChatStore();
   const setCreditsError = useModelStore((s) => s.setCreditsError);
@@ -51,6 +51,10 @@ export function ChatInput() {
   }, [mcpServers.length, fetchMcpServers]);
 
   useEffect(() => {
+    setEnabledMcpServerIds(mcpServers.filter((server) => server.enabled).map((server) => server.id));
+  }, [mcpServers]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!mcpMenuRef.current) return;
       if (!mcpMenuRef.current.contains(event.target as Node)) {
@@ -64,20 +68,12 @@ export function ChatInput() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [mcpMenuOpen]);
 
-  const handleToggleMcpServer = async (serverId: string) => {
-    const nextServers = mcpServers.map((server) =>
-      server.id === serverId ? { ...server, enabled: !server.enabled } : server
+  const handleToggleMcpServer = (serverId: string) => {
+    setEnabledMcpServerIds((current) =>
+      current.includes(serverId)
+        ? current.filter((id) => id !== serverId)
+        : [...current, serverId]
     );
-    setMcpServerEnabled(
-      serverId,
-      !!nextServers.find((server) => server.id === serverId)?.enabled
-    );
-    try {
-      const enabledIds = nextServers.filter((server) => server.enabled).map((server) => server.id);
-      await updateEnabledMcpServers(enabledIds);
-    } catch (error) {
-      console.error("Failed to persist MCP server selection:", error);
-    }
   };
 
   const handleAttachFile = async (file: File | null) => {
@@ -100,7 +96,7 @@ export function ChatInput() {
       const upload = await uploadReceipt(file);
       setPendingAttachments([
         {
-          document_type: "hsa_receipt",
+          document_type: "receipt",
           temp_file_path: upload.temp_file_path,
           filename: file.name,
           mime_type: file.type || "application/pdf",
@@ -157,10 +153,7 @@ export function ChatInput() {
       }
 
       const { sessionId, currentChatId } = useChatStore.getState();
-      const enabledMcpServers = useChatStore
-        .getState()
-        .mcpServers.filter((server) => server.enabled)
-        .map((server) => server.id);
+      const enabledMcpServers = enabledMcpServerIds;
       const response = await sendChatMessage(
         baseUserMessage,
         sessionId,
@@ -374,7 +367,9 @@ export function ChatInput() {
                     {mcpServers.length === 0 && (
                       <p className="text-xs text-muted-foreground px-2 py-1">No servers found.</p>
                     )}
-                    {mcpServers.map((server) => (
+                    {mcpServers.map((server) => {
+                      const isEnabled = enabledMcpServerIds.includes(server.id);
+                      return (
                       <button
                         key={server.id}
                         type="button"
@@ -385,12 +380,12 @@ export function ChatInput() {
                           <span className="text-sm font-medium text-foreground">{server.name}</span>
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded-full ${
-                              server.enabled
+                              isEnabled
                                 ? "bg-[var(--success-100)] text-[var(--success-700)]"
                                 : "bg-secondary text-muted-foreground"
                             }`}
                           >
-                            {server.enabled ? "ON" : "OFF"}
+                            {isEnabled ? "ON" : "OFF"}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">{server.description}</p>
@@ -398,7 +393,8 @@ export function ChatInput() {
                           {server.source === "builtin" ? "Built-in" : "Custom"}
                         </p>
                       </button>
-                    ))}
+                    );
+                    })}
                   </div>
                 </div>
               )}

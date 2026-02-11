@@ -3,6 +3,7 @@ import type {
   BulkImportConfirmItem,
   BulkImportConfirmResponse,
   BulkImportResponse,
+  CharitableDonationSchema,
   Chat,
   ChatAttachmentInput,
   ChatListResponse,
@@ -254,6 +255,19 @@ export async function checkReceiptDuplicate(
     method: "POST",
     body: JSON.stringify({
       expense_data: expenseData,
+      fuzzy_days: fuzzyDays,
+    }),
+  });
+}
+
+export async function checkCharitableDuplicate(
+  charitableData: CharitableDonationSchema,
+  fuzzyDays: number = 3
+): Promise<CheckDuplicateResponse> {
+  return fetchDirectApi("/receipts/check-charitable-duplicate", {
+    method: "POST",
+    body: JSON.stringify({
+      charitable_data: charitableData,
       fuzzy_days: fuzzyDays,
     }),
   });

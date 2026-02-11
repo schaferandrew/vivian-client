@@ -27,7 +27,7 @@ export interface CharitableDonationSchema {
 }
 
 export interface ParsedReceipt {
-  category?: ExpenseCategory;
+  suggested_category?: ExpenseCategory;
   expense?: ExpenseSchema;  // null for charitable
   charitable_data?: CharitableDonationSchema;
   confidence: number;
@@ -66,6 +66,11 @@ export interface ReceiptParseResponse {
 
 export interface CheckDuplicateRequest {
   expense_data: ExpenseSchema;
+  fuzzy_days?: number;
+}
+
+export interface CheckCharitableDuplicateRequest {
+  charitable_data: CharitableDonationSchema;
   fuzzy_days?: number;
 }
 
@@ -113,7 +118,7 @@ export interface DuplicateInfo {
   message?: string;
 }
 
-export type DocumentType = "hsa_receipt" | "charitable_receipt";
+export type DocumentType = "receipt" | "hsa_receipt" | "charitable_receipt";
 
 export interface ChatAttachmentInput {
   attachment_id?: string;
@@ -213,6 +218,7 @@ export interface BulkImportConfirmResponse {
 export interface UnreimbursedBalanceResponse {
   total_amount: number;
   count: number;
+  is_configured?: boolean;  // Whether MCP server is properly configured
 }
 
 // Charitable donation types
@@ -400,7 +406,7 @@ export interface ModelSelectResponse {
 export interface MCPServerSettingsSchema {
   key: string;
   label: string;
-  type: "string" | "number" | "boolean";
+  type: "string" | "number" | "boolean" | "folder_id" | "spreadsheet_id" | "text";
   required: boolean;
   default?: string | number | boolean;
 }

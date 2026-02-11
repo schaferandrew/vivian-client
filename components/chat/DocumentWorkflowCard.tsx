@@ -17,33 +17,71 @@ import { ConfidenceBadge } from "@/components/receipt/ReceiptStatusBadge";
 import { ErrorPanel, WarningPanel } from "@/components/receipt/StatusPanels";
 import { useDuplicateCheck, useReceiptConfirmation } from "@/lib/hooks/useReceiptWorkflow";
 import { CharitableExpenseEditor } from "@/components/receipt/CharitableExpenseEditor";
-import { useCharitableReceiptConfirmation } from "@/lib/hooks/useCharitableReceiptConfirmation";
 import type {
   DocumentWorkflowArtifact,
   ExpenseSchema,
   ParsedReceipt,
   ReimbursementStatus,
   CharitableDonationSchema,
+  ExpenseCategory,
 } from "@/types";
 
-function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: DocumentWorkflowArtifact; onCancel?: () => void }) {
+function CategoryToggle({ value, onChange }: { value: ExpenseCategory; onChange: (val: ExpenseCategory) => void }) {
+  return (
+    <div className="flex gap-2 mb-2">
+      <button
+        type="button"
+        onClick={() => onChange("hsa")}
+        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+          value === "hsa" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+        }`}
+      >
+        HSA Medical
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("charitable")}
+        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+          value === "charitable" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+        }`}
+      >
+        Charitable Donation
+      </button>
+    </div>
+  );
+}
+
+function ReceiptConfirmationCard({ workflow, onCancel }: { workflow: DocumentWorkflowArtifact; onCancel?: () => void }) {
   const parsed = workflow.parsed_data as ParsedReceipt | undefined;
   const tempFilePath = workflow.temp_file_path;
   const [step, setStep] = useState<"review" | "confirm" | "success" | "canceled">("review");
-  const [editedExpense, setEditedExpense] = useState<ExpenseSchema | null>(
-    parsed?.expense ?? null
+
+  // Category state - initialize from parsed_data.suggested_category
+  const [category, setCategory] = useState<ExpenseCategory>(
+    (parsed?.suggested_category as ExpenseCategory) || "hsa"
   );
+
+  // Edited data for both types
+  const [editedExpense, setEditedExpense] = useState<ExpenseSchema | null>(parsed?.expense ?? null);
+  const [editedCharitable, setEditedCharitable] = useState<CharitableDonationSchema | null>(parsed?.charitable_data ?? null);
+
   const [status, setStatus] = useState<ReimbursementStatus>("unreimbursed");
   const [forceImport, setForceImport] = useState(false);
 
-  // Sync state when workflow changes (e.g., new receipt uploaded)
+  // Sync state when workflow changes
   useEffect(() => {
     if (parsed?.expense) {
       setEditedExpense(parsed.expense);
       setStatus(parsed.expense.hsa_eligible === false ? "not_hsa_eligible" : "unreimbursed");
-      setForceImport(false);
     }
-  }, [workflow.workflow_id, parsed?.expense]);
+    if (parsed?.charitable_data) {
+      setEditedCharitable(parsed.charitable_data);
+    }
+    if (parsed?.suggested_category) {
+      setCategory(parsed.suggested_category as ExpenseCategory);
+    }
+    setForceImport(false);
+  }, [workflow.workflow_id, parsed?.expense, parsed?.charitable_data, parsed?.suggested_category]);
 
   const {
     isChecking: isCheckingDuplicates,
@@ -68,10 +106,51 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
     reset: resetConfirmation,
   } = useReceiptConfirmation();
 
-  if (!parsed || !tempFilePath || !editedExpense) {
+  // Handle category switching - map fields between schemas
+  const handleCategoryChange = (newCategory: ExpenseCategory) => {
+    if (newCategory === category) return;
+
+    if (newCategory === "charitable") {
+      // HSA -> Charitable: map provider to organization_name, service_date to donation_date
+      const existingExpense = editedExpense;
+      setEditedCharitable({
+        organization_name: existingExpense?.provider || "",
+        donation_date: existingExpense?.service_date || "",
+        amount: existingExpense?.amount ?? 0,
+        tax_deductible: true,
+        description: "",
+      });
+      setEditedExpense(null);
+    } else {
+      // Charitable -> HSA: map organization_name to provider, donation_date to service_date
+      const existingCharitable = editedCharitable;
+      setEditedExpense({
+        provider: existingCharitable?.organization_name || "",
+        service_date: existingCharitable?.donation_date || "",
+        paid_date: "",
+        amount: existingCharitable?.amount ?? 0,
+        hsa_eligible: true,
+      });
+      setEditedCharitable(null);
+    }
+
+    setCategory(newCategory);
+    // Reset duplicate state when switching categories
+    resetDuplicateCheck();
+  };
+
+  if (!parsed || !tempFilePath) {
     return (
       <ErrorPanel size="sm">
         {workflow.message || "This workflow is missing parsed data."}
+      </ErrorPanel>
+    );
+  }
+
+  if ((category === "hsa" && !editedExpense) || (category === "charitable" && !editedCharitable)) {
+    return (
+      <ErrorPanel size="sm">
+        Missing {category === "hsa" ? "expense" : "charitable"} data.
       </ErrorPanel>
     );
   }
@@ -80,12 +159,18 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
   const needsReview = confidence < 85;
 
   const handleContinue = async () => {
-    // Skip duplicate check if workflow already has duplicate info and expense hasn't changed
+    // Skip duplicate check if workflow already has duplicate info and data hasn't changed
     const hasExistingDuplicateCheck = workflow.duplicate_info !== undefined;
-    const expenseChanged = JSON.stringify(editedExpense) !== JSON.stringify(parsed?.expense);
+    const dataChanged = category === "hsa"
+      ? JSON.stringify(editedExpense) !== JSON.stringify(parsed?.expense)
+      : JSON.stringify(editedCharitable) !== JSON.stringify(parsed?.charitable_data);
     
-    if (!hasExistingDuplicateCheck || expenseChanged) {
-      await checkDuplicates(editedExpense);
+    if (!hasExistingDuplicateCheck || dataChanged) {
+      await checkDuplicates({
+        category,
+        expense: editedExpense ?? undefined,
+        charitable: editedCharitable ?? undefined,
+      });
     }
     setStep("confirm");
   };
@@ -93,7 +178,9 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
   const handleConfirm = async () => {
     const result = await submitReceipt({
       tempFilePath,
-      expense: editedExpense,
+      category,
+      expense: editedExpense ?? undefined,
+      charitable: editedCharitable ?? undefined,
       status,
       forceImport,
     });
@@ -108,7 +195,23 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
   };
 
   if (step === "success") {
-    return <SuccessState compact title="Receipt saved successfully." />;
+    return (
+      <SuccessState
+        compact
+        title={category === "charitable" ? "Donation saved" : "Receipt saved successfully."}
+        description={category === "charitable" ? "This charitable donation is now part of your giving ledger." : undefined}
+      >
+        {category === "charitable" ? (
+          <Link href="/donations">
+            <Button size="sm">View Donations</Button>
+          </Link>
+        ) : (
+          <Link href="/hsa">
+            <Button size="sm">View HSA Dashboard</Button>
+          </Link>
+        )}
+      </SuccessState>
+    );
   }
 
   if (step === "canceled") {
@@ -119,7 +222,7 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
           <span className="text-xs text-muted-foreground">Canceled</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          This receipt was not saved. You can resume or discard it.
+          This {category === "charitable" ? "donation" : "receipt"} was not saved. You can resume or discard it.
         </p>
         <div className="flex items-center gap-2">
           <Button
@@ -166,11 +269,30 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
 
       {step === "review" && (
         <div className="space-y-2">
-          <ExpenseEditor
-            expense={editedExpense}
-            onChange={(next) => setEditedExpense(next)}
-            needsReview={needsReview}
-          />
+          <CategoryToggle value={category} onChange={handleCategoryChange} />
+
+          {needsReview && (
+            <WarningPanel size="sm">
+              Low confidence parse. Please verify the fields below.
+            </WarningPanel>
+          )}
+
+          {category === "hsa" && editedExpense && (
+            <ExpenseEditor
+              expense={editedExpense}
+              onChange={(next) => setEditedExpense(next)}
+              needsReview={needsReview}
+            />
+          )}
+
+          {category === "charitable" && editedCharitable && (
+            <CharitableExpenseEditor
+              donation={editedCharitable}
+              onChange={(next) => setEditedCharitable(next)}
+              needsReview={needsReview}
+            />
+          )}
+
           <div className="flex items-center justify-between">
             <Button onClick={handleContinue} disabled={isCheckingDuplicates} size="sm">
               {isCheckingDuplicates ? "Checking duplicates..." : "Continue"}
@@ -188,16 +310,25 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
 
       {step === "confirm" && (
         <div className="space-y-3">
-          <ReimbursementStatusSelector
-            status={status}
-            onChange={setStatus}
-            radioName={`${workflow.workflow_id}-status`}
-            compact
-          />
+          {category === "hsa" ? (
+            <ReimbursementStatusSelector
+              status={status}
+              onChange={setStatus}
+              radioName={`${workflow.workflow_id}-status`}
+              compact
+            />
+          ) : (
+            <div className="p-3 bg-secondary rounded-lg">
+              <p className="text-xs text-muted-foreground">Charitable donations are automatically tracked in your donation ledger.</p>
+            </div>
+          )}
 
           <div className="space-y-1 rounded-lg border border-border bg-card p-2">
             <TaskStatusRow label="Uploading receipt to Google Drive" status={driveStatus} />
-            <TaskStatusRow label="Updating Google Sheet ledger" status={sheetStatus} />
+            <TaskStatusRow
+              label={category === "charitable" ? "Updating charitable donation ledger" : "Updating Google Sheet ledger"}
+              status={sheetStatus}
+            />
           </div>
 
           <div className="flex items-center gap-2">
@@ -231,167 +362,7 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
               className="text-xs text-muted-foreground hover:text-foreground underline"
               type="button"
             >
-              Cancel and discard this receipt
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CharitableReceiptConfirmationCard({
-  workflow,
-  onCancel,
-}: {
-  workflow: DocumentWorkflowArtifact;
-  onCancel?: () => void;
-}) {
-  const parsed = workflow.parsed_data as ParsedReceipt | undefined;
-  const tempFilePath = workflow.temp_file_path;
-  const [step, setStep] = useState<"review" | "confirm" | "success" | "canceled">("review");
-  const [editedDonation, setEditedDonation] = useState<CharitableDonationSchema | null>(
-    parsed?.charitable_data ?? null
-  );
-
-  const {
-    isSubmitting,
-    error,
-    driveStatus,
-    sheetStatus,
-    submit,
-    reset,
-  } = useCharitableReceiptConfirmation();
-
-  useEffect(() => {
-    if (parsed?.charitable_data) {
-      setEditedDonation(parsed.charitable_data);
-    }
-  }, [workflow.workflow_id, parsed?.charitable_data]);
-
-  if (!parsed || !tempFilePath || !editedDonation) {
-    return (
-      <ErrorPanel size="sm">
-        {workflow.message || "This workflow is missing parsed charitable data."}
-      </ErrorPanel>
-    );
-  }
-
-  const confidence = Math.round((parsed.confidence || 0) * 100);
-  const needsReview = confidence < 85;
-
-  const handleContinue = () => setStep("confirm");
-
-  const handleConfirm = async () => {
-    const result = await submit({
-      tempFilePath,
-      charitableData: editedDonation,
-    });
-
-    if (result.success) {
-      setStep("success");
-    }
-  };
-
-  if (step === "success") {
-    return (
-      <SuccessState
-        compact
-        title="Donation saved"
-        description="This charitable donation is now part of your giving ledger."
-      >
-        <Link href="/donations">
-          <Button size="sm">View Donations</Button>
-        </Link>
-      </SuccessState>
-    );
-  }
-
-  if (step === "canceled") {
-    return (
-      <div className="space-y-3 rounded-lg border border-border bg-background p-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium">{workflow.filename || "Charitable Receipt"}</p>
-          <span className="text-xs text-muted-foreground">Canceled</span>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          This donation was not saved. You can resume or discard it.
-        </p>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setStep("review")}>Resume</Button>
-          {onCancel && (
-            <Button variant="ghost" size="sm" onClick={onCancel}>
-              Discard
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3 rounded-lg border border-border bg-background p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">{workflow.filename || "Charitable Receipt"}</p>
-        <ConfidenceBadge confidence={confidence} />
-      </div>
-
-      {error && <ErrorPanel size="sm">{error}</ErrorPanel>}
-
-      {step === "review" && (
-        <div className="space-y-2">
-          <CharitableExpenseEditor
-            donation={editedDonation}
-            onChange={(next) => setEditedDonation(next)}
-            needsReview={needsReview}
-          />
-          <div className="flex items-center justify-between">
-            <Button onClick={handleContinue} disabled={isSubmitting} size="sm">
-              Continue
-            </Button>
-            <button
-              onClick={() => setStep("canceled")}
-              className="text-xs text-muted-foreground hover:text-foreground underline"
-              type="button"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === "confirm" && (
-        <div className="space-y-3">
-          <div className="space-y-1 rounded-lg border border-border bg-card p-2">
-            <TaskStatusRow label="Uploading receipt to Google Drive" status={driveStatus} />
-            <TaskStatusRow label="Updating charitable donation ledger" status={sheetStatus} />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setStep("review");
-                reset();
-              }}
-              disabled={isSubmitting}
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Back
-            </Button>
-            <Button size="sm" onClick={handleConfirm} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Confirm & Save"}
-            </Button>
-          </div>
-
-          <div className="pt-2 border-t border-border">
-            <button
-              onClick={() => setStep("canceled")}
-              className="text-xs text-muted-foreground hover:text-foreground underline"
-              type="button"
-            >
-              Cancel and discard this donation
+              Cancel and discard this {category === "charitable" ? "donation" : "receipt"}
             </button>
           </div>
         </div>
@@ -401,30 +372,24 @@ function CharitableReceiptConfirmationCard({
 }
 
 export function DocumentWorkflowCard({ workflow, onCancel }: { workflow: DocumentWorkflowArtifact; onCancel?: () => void }) {
-  if (workflow.document_type === "charitable_receipt") {
+  // Route all receipt types through the unified component
+  if (workflow.document_type === "receipt" || 
+      workflow.document_type === "hsa_receipt" || 
+      workflow.document_type === "charitable_receipt") {
     if (workflow.status !== "ready_for_confirmation") {
       return <ErrorPanel size="sm">{workflow.message}</ErrorPanel>;
     }
 
-    return <CharitableReceiptConfirmationCard workflow={workflow} onCancel={onCancel} />;
+    return <ReceiptConfirmationCard workflow={workflow} onCancel={onCancel} />;
   }
 
-  if (workflow.document_type !== "hsa_receipt") {
-    return (
-      <div className="rounded-lg border border-border bg-background p-3 text-sm">
-        <p className="font-medium">
-          {workflow.filename || workflow.document_type.replace(/_/g, " ")}
-        </p>
-        <p className="text-muted-foreground mt-1">{workflow.message}</p>
-      </div>
-    );
-  }
-
-  if (workflow.status !== "ready_for_confirmation") {
-    return (
-      <ErrorPanel size="sm">{workflow.message}</ErrorPanel>
-    );
-  }
-
-  return <HsaReceiptConfirmationCard workflow={workflow} onCancel={onCancel} />;
+  // Unknown type - generic display
+  return (
+    <div className="rounded-lg border border-border bg-background p-3 text-sm">
+      <p className="font-medium">
+        {workflow.filename || workflow.document_type.replace(/_/g, " ")}
+      </p>
+      <p className="text-muted-foreground mt-1">{workflow.message}</p>
+    </div>
+  );
 }

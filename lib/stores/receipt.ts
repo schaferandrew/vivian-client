@@ -43,12 +43,13 @@ export const useReceiptStore = create<ReceiptStore>((set, get) => ({
   setCategory: (category) => {
     const parsedData = get().parsedData;
     if (category === "charitable") {
+      const existingExpense = get().editedExpense ?? parsedData?.expense;
       return set({
         category,
         editedCharitableData: parsedData?.charitable_data ?? {
-          organization_name: "",
-          donation_date: "",
-          amount: 0,
+          organization_name: existingExpense?.provider || "",
+          donation_date: existingExpense?.service_date || "",
+          amount: existingExpense?.amount ?? 0,
           tax_deductible: true,
           description: "",
         },
@@ -56,13 +57,14 @@ export const useReceiptStore = create<ReceiptStore>((set, get) => ({
       });
     }
 
+    const existingCharitable = get().editedCharitableData ?? parsedData?.charitable_data;
     return set({
       category,
       editedExpense: parsedData?.expense ?? {
-        provider: "",
-        service_date: "",
+        provider: existingCharitable?.organization_name || "",
+        service_date: existingCharitable?.donation_date || "",
         paid_date: "",
-        amount: 0,
+        amount: existingCharitable?.amount ?? 0,
         hsa_eligible: true,
       },
       editedCharitableData: undefined,
@@ -80,19 +82,24 @@ export const useReceiptStore = create<ReceiptStore>((set, get) => ({
       parseDuplicateCheckError: undefined,
     }),
   setParsedData: (data) => {
-    if (data.category === "charitable") {
+    // Initialize category from suggested_category, but don't override if already set
+    const currentCategory = get().category;
+    const suggestedCategory = data.suggested_category;
+    const newCategory = suggestedCategory || currentCategory;
+    
+    if (newCategory === "charitable") {
       return set({
         parsedData: data,
         editedCharitableData: data.charitable_data,
         editedExpense: undefined,
-        category: "charitable",
+        category: newCategory,
       });
     }
     return set({
       parsedData: data,
       editedExpense: data.expense,
       editedCharitableData: undefined,
-      category: "hsa",
+      category: newCategory,
     });
   },
   setParseDuplicateInfo: (isDuplicate, duplicateInfo, checkError) =>

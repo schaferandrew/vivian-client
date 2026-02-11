@@ -5,6 +5,7 @@ import { useModelStore } from "@/lib/stores/model";
 import { useChatStore } from "@/lib/stores/chat";
 import { Check, ChevronDown, AlertCircle, Loader2, Brain, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RefreshButton } from "@/components/ui/refresh-button";
 
 export function ModelSelector() {
   const [isOpen, setIsOpen] = useState(false);
@@ -73,10 +74,11 @@ export function ModelSelector() {
             onClick={() => setIsOpen(false)}
           />
           <div className="absolute right-0 top-full mt-2 w-72 bg-popover rounded-lg shadow-lg border border-border z-50 overflow-hidden">
-            <div className="px-3 py-2 border-b border-border">
+            <div className="px-3 py-2 border-b border-border flex items-center justify-between">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Select Model
               </h3>
+              <RefreshButton onRefresh={fetchModels} title="Refresh models" />
             </div>
 
             {showSuccess && (

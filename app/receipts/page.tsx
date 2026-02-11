@@ -140,11 +140,7 @@ function ReviewStep() {
 
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
-  useEffect(() => {
-    if (parsedData?.category && parsedData.category !== category) {
-      setCategory(parsedData.category);
-    }
-  }, [parsedData?.category, category, setCategory]);
+
 
   useEffect(() => {
     if (parsedData?.expense) {
@@ -232,7 +228,7 @@ function ReviewStep() {
 
       setParsedData({
         ...parsedData,
-        category,
+        suggested_category: category,
         expense: category === "hsa" ? editedExpense : undefined,
         charitable_data: category === "charitable" ? editedCharitableData : undefined,
       });
@@ -241,7 +237,7 @@ function ReviewStep() {
       setParseDuplicateInfo(false, [], "Duplicate check unavailable. You can still continue and final duplicate checks will run on save.");
       setParsedData({
         ...parsedData,
-        category,
+        suggested_category: category,
         expense: category === "hsa" ? editedExpense : undefined,
         charitable_data: category === "charitable" ? editedCharitableData : undefined,
       });

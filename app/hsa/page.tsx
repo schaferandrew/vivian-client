@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getUnreimbursedBalanceServer } from "@/lib/api/server";
 
 export default async function HSAPage() {
-  let balance = { total_amount: 0, count: 0 };
+  let balance = { total_amount: 0, count: 0, is_configured: false };
   
   try {
     balance = await getUnreimbursedBalanceServer();
@@ -28,6 +28,20 @@ export default async function HSAPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
+        {balance.is_configured === false && (
+          <Card className="mb-4 border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
+            <CardContent className="pt-4">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Configure HSA Ledger:</strong> Go to{" "}
+                <Link href="/settings" className="underline hover:no-underline">
+                  Settings
+                </Link>{" "}
+                to connect your Google Sheet and Drive folders to enable balance tracking.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardHeader>
