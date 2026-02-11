@@ -146,7 +146,7 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
         <WarningPanel size="sm">{duplicateCheckError}</WarningPanel>
       )}
 
-      {isDuplicate && duplicateInfo.length > 0 && (
+      {isDuplicate && (
         <DuplicateInfoPanel
           duplicateInfo={duplicateInfo}
           forceImport={forceImport}
