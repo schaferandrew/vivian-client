@@ -46,6 +46,7 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
     duplicateInfo: duplicateInfoFromCheck,
     error: duplicateCheckError,
     check: checkDuplicates,
+    setDuplicateState,
     reset: resetDuplicateCheck,
   } = useDuplicateCheck();
 
@@ -95,6 +96,8 @@ function HsaReceiptConfirmationCard({ workflow, onCancel }: { workflow: Document
     if (result.success) {
       setStep("success");
     } else if (result.isDuplicate) {
+      // Update duplicate state with submit-time detection results
+      setDuplicateState(true, result.duplicateInfo || []);
       setForceImport(false);
     }
   };
