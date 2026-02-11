@@ -12,6 +12,7 @@ interface UseDuplicateCheckReturn {
   duplicateInfo: DuplicateInfo[];
   error: string | null;
   check: (expense: ExpenseSchema) => Promise<boolean>;
+  setDuplicateState: (isDuplicate: boolean, duplicateInfo: DuplicateInfo[]) => void;
   reset: () => void;
 }
 
@@ -49,6 +50,11 @@ export function useDuplicateCheck(): UseDuplicateCheckReturn {
     }
   }, []);
 
+  const setDuplicateState = useCallback((isDup: boolean, dupInfo: DuplicateInfo[]) => {
+    setIsDuplicate(isDup);
+    setDuplicateInfo(dupInfo);
+  }, []);
+
   const reset = useCallback(() => {
     setIsChecking(false);
     setIsDuplicate(false);
@@ -62,6 +68,7 @@ export function useDuplicateCheck(): UseDuplicateCheckReturn {
     duplicateInfo,
     error,
     check,
+    setDuplicateState,
     reset,
   };
 }
