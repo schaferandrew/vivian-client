@@ -166,7 +166,7 @@ export default function SettingsPage() {
   const [runningTestServerId, setRunningTestServerId] = useState<string | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
 
-  // MCP Settings state
+  // MCP Settings state - per-server settings with schema support
   const [expandedSettingsServerId, setExpandedSettingsServerId] = useState<string | null>(null);
   const [mcpSettingsLoading, setMcpSettingsLoading] = useState<string | null>(null);
   const [mcpSettingsSaving, setMcpSettingsSaving] = useState<string | null>(null);
@@ -175,6 +175,16 @@ export default function SettingsPage() {
   const [mcpSettingsEditable, setMcpSettingsEditable] = useState<Record<string, boolean>>({});
   const [mcpSettingsError, setMcpSettingsError] = useState<Record<string, string | null>>({});
   const [mcpSettingsSuccess, setMcpSettingsSuccess] = useState<Record<string, string | null>>({});
+  
+  // Legacy flat settings for backward compatibility (deprecated)
+  const [legacyMcpSettings, setLegacyMcpSettings] = useState({
+    mcp_reimbursed_folder_id: "",
+    mcp_unreimbursed_folder_id: "",
+    mcp_sheets_spreadsheet_id: "",
+    charitable_drive_folder_id: "",
+    charitable_spreadsheet_id: "",
+    charitable_worksheet_name: "",
+  });
 
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
@@ -289,6 +299,61 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const MCP_SETTINGS_PROXY_URL = "/api/agent/mcp/settings";
+
+  const fetchMcpSettings = useCallback(async () => {
+    setMcpSettingsLoading(true);
+    setMcpSettingsError(null);
+    try {
+      const response = await fetch(MCP_SETTINGS_PROXY_URL, { cache: "no-store" });
+      const payload = (await response.json().catch(() => ({}))) as Record<string, string>;
+
+      if (!response.ok) {
+        throw new Error((payload as { detail?: string }).detail || `Settings API failed (${response.status})`);
+      }
+
+      setMcpSettings((prev) => ({
+        mcp_reimbursed_folder_id: payload.mcp_reimbursed_folder_id || prev.mcp_reimbursed_folder_id,
+        mcp_unreimbursed_folder_id: payload.mcp_unreimbursed_folder_id || prev.mcp_unreimbursed_folder_id,
+        mcp_sheets_spreadsheet_id: payload.mcp_sheets_spreadsheet_id || prev.mcp_sheets_spreadsheet_id,
+        charitable_drive_folder_id: payload.charitable_drive_folder_id || prev.charitable_drive_folder_id,
+        charitable_spreadsheet_id: payload.charitable_spreadsheet_id || prev.charitable_spreadsheet_id,
+        charitable_worksheet_name: payload.charitable_worksheet_name || prev.charitable_worksheet_name,
+      }));
+    } catch (error) {
+      setMcpSettingsError(error instanceof Error ? error.message : "Could not load MCP settings.");
+    } finally {
+      setMcpSettingsLoading(false);
+    }
+  }, []);
+
+  const handleSaveMcpSettings = useCallback(async () => {
+    setMcpSettingsSaving(true);
+    setMcpSettingsError(null);
+    setMcpSettingsSuccess(null);
+
+    try {
+      const response = await fetch(MCP_SETTINGS_PROXY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mcpSettings),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as Record<string, string>;
+
+      if (!response.ok) {
+        throw new Error((payload as { detail?: string }).detail || `Settings API failed (${response.status})`);
+      }
+
+      setMcpSettingsSuccess("Settings saved successfully.");
+      setTimeout(() => setMcpSettingsSuccess(null), 3000);
+    } catch (error) {
+      setMcpSettingsError(error instanceof Error ? error.message : "Could not save MCP settings.");
+    } finally {
+      setMcpSettingsSaving(false);
+    }
+  }, [mcpSettings]);
+
   const fetchHomeSettings = useCallback(async () => {
     if (!canManageHome) {
       setHomeSettings(null);
@@ -334,6 +399,12 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchMcpServers();
   }, [fetchMcpServers]);
+
+  useEffect(() => {
+    if (activeSection === "connections") {
+      fetchMcpSettings();
+    }
+  }, [activeSection, fetchMcpSettings]);
 
   useEffect(() => {
     fetchHomeSettings();
@@ -1238,6 +1309,140 @@ export default function SettingsPage() {
                     </div>
 
                     {mcpError && <p className="text-sm text-[var(--error-700)]">{mcpError}</p>}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Receipt Tool Settings</CardTitle>
+                    <CardDescription>
+                      Google Drive folder IDs and spreadsheet settings for the Vivian Receipt Tool.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-foreground block mb-2">
+                          HSA Reimbursed Folder ID
+                        </label>
+                        <Input
+                          id="hsa-reimbursed-folder-id"
+                          placeholder="1ABC..."
+                          value={mcpSettings.mcp_reimbursed_folder_id || ""}
+                          onChange={(e) =>
+                            setMcpSettings((prev) => ({
+                              ...prev,
+                              mcp_reimbursed_folder_id: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-foreground block mb-2">
+                          HSA Unreimbursed Folder ID
+                        </label>
+                        <Input
+                          id="hsa-unreimbursed-folder-id"
+                          placeholder="1DEF..."
+                          value={mcpSettings.mcp_unreimbursed_folder_id || ""}
+                          onChange={(e) =>
+                            setMcpSettings((prev) => ({
+                              ...prev,
+                              mcp_unreimbursed_folder_id: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-foreground block mb-2">
+                          HSA Spreadsheet ID
+                        </label>
+                        <Input
+                          id="hsa-spreadsheet-id"
+                          placeholder="1abc123..."
+                          value={mcpSettings.mcp_sheets_spreadsheet_id || ""}
+                          onChange={(e) =>
+                            setMcpSettings((prev) => ({
+                              ...prev,
+                              mcp_sheets_spreadsheet_id: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <hr className="border-border" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-foreground block mb-2">
+                          Charitable Drive Folder ID
+                        </label>
+                        <Input
+                          id="charitable-drive-folder-id"
+                          placeholder="1JKL..."
+                          value={mcpSettings.charitable_drive_folder_id || ""}
+                          onChange={(e) =>
+                            setMcpSettings((prev) => ({
+                              ...prev,
+                              charitable_drive_folder_id: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-foreground block mb-2">
+                          Charitable Spreadsheet ID
+                        </label>
+                        <Input
+                          id="charitable-spreadsheet-id"
+                          placeholder="1mno123..."
+                          value={mcpSettings.charitable_spreadsheet_id || ""}
+                          onChange={(e) =>
+                            setMcpSettings((prev) => ({
+                              ...prev,
+                              charitable_spreadsheet_id: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-foreground block mb-2">
+                          Charitable Worksheet Name
+                        </label>
+                        <Input
+                          id="charitable-worksheet-name"
+                          placeholder="Charitable_Ledger"
+                          value={mcpSettings.charitable_worksheet_name || ""}
+                          onChange={(e) =>
+                            setMcpSettings((prev) => ({
+                              ...prev,
+                              charitable_worksheet_name: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        onClick={handleSaveMcpSettings}
+                        disabled={mcpSettingsSaving}
+                      >
+                        {mcpSettingsSaving ? "Saving..." : "Save Settings"}
+                      </Button>
+                      {mcpSettingsError && (
+                        <p className="text-sm text-[var(--error-700)]">{mcpSettingsError}</p>
+                      )}
+                      {mcpSettingsSuccess && (
+                        <p className="text-sm text-[var(--success-700)]">{mcpSettingsSuccess}</p>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </>

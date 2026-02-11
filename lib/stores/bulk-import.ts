@@ -3,6 +3,7 @@ import type {
   BulkImportFileResult,
   BulkImportSummary,
   ReimbursementStatus,
+  ExpenseCategory,
 } from "@/types";
 
 type BulkImportStep = "upload" | "scanning" | "review" | "confirm" | "results";
@@ -187,8 +188,12 @@ export const getReadyToImportCount = (state: BulkImportState): number => {
 export const getTotalAmount = (state: BulkImportState): number => {
   let total = 0;
   const addAmount = (r: BulkImportFileResult) => {
-    if (r.expense && r.status !== "failed" && r.status !== "skipped") {
-      total += r.expense.amount;
+    if (r.status !== "failed" && r.status !== "skipped") {
+      if (r.expense) {
+        total += r.expense.amount;
+      } else if (r.charitable_data) {
+        total += r.charitable_data.amount;
+      }
     }
   };
   

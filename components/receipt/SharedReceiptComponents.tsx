@@ -243,6 +243,7 @@ export function SuccessState({
           <CheckCircle className="h-4 w-4" />
           <span>{title || "Receipt saved successfully."}</span>
         </div>
+        {children && <div className="mt-3">{children}</div>}
       </div>
     );
   }

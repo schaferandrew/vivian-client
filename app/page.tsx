@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MessageSquare, Upload, Wallet, Settings } from "lucide-react";
+import { MessageSquare, Upload, Wallet, Settings, Heart } from "lucide-react";
 import { ProfileMenu } from "@/components/ui/profile-menu";
 
 export default function HomePage() {
@@ -76,6 +76,22 @@ export default function HomePage() {
                   <div>
                     <CardTitle className="text-lg">HSA Dashboard</CardTitle>
                     <CardDescription>View your HSA balance and recent expenses</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link href="/donations">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[var(--accent-100)] rounded-lg flex items-center justify-center">
+                    <Heart className="w-5 h-5 text-[var(--accent-700)]" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Donations</CardTitle>
+                    <CardDescription>Track charitable receipts and tax-deductible giving</CardDescription>
                   </div>
                 </div>
               </CardHeader>

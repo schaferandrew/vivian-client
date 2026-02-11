@@ -33,6 +33,9 @@ export function ChatInput() {
   } = useChatStore();
   const setCreditsError = useModelStore((s) => s.setCreditsError);
   const setRateLimitError = useModelStore((s) => s.setRateLimitError);
+  const models = useModelStore((s) => s.models);
+  const currentModel = useModelStore((s) => s.currentModel);
+  const isOllamaModel = models.find((m) => m.id === currentModel)?.provider === "Ollama";
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -140,6 +143,19 @@ export function ChatInput() {
     setLoading(true);
 
     try {
+      const selectedModel = models.find((model) => model.id === currentModel);
+      if (webSearchEnabled && selectedModel?.provider === "Ollama") {
+        addMessage({
+          id: (Date.now() + 1).toString(),
+          role: "system",
+          content:
+            "Web search isn't supported by Ollama models. Disable web search or pick an OpenRouter model.",
+          timestamp: new Date(),
+        });
+        setLoading(false);
+        return;
+      }
+
       const { sessionId, currentChatId } = useChatStore.getState();
       const enabledMcpServers = useChatStore
         .getState()
@@ -325,12 +341,15 @@ export function ChatInput() {
               <button
                 type="button"
                 onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                disabled={isOllamaModel}
                 className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${
-                  webSearchEnabled
+                  isOllamaModel
+                    ? "opacity-40 cursor-not-allowed"
+                    : webSearchEnabled
                     ? "bg-[var(--primary-100)] text-[var(--primary-700)]"
                     : "hover:bg-secondary text-muted-foreground"
                 }`}
-                title="Toggle web search"
+                title={isOllamaModel ? "Web search not available for Ollama models" : "Toggle web search"}
               >
                 <Globe className="w-4 h-4" />
               </button>
