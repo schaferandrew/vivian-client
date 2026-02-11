@@ -4,9 +4,18 @@ import { NextResponse } from "next/server";
 import { proxyBackendWithAuth } from "@/app/api/agent/_utils/auth-proxy";
 import { setAuthCookies } from "@/lib/auth/server";
 
+type RevalidationStrategy = "max" | "immediate" | "update";
+
+type RevalidationTagConfig = {
+  tag: string;
+  strategy?: RevalidationStrategy;
+};
+
+type RevalidationTarget = string | RevalidationTagConfig;
+
 type RevalidateTags =
-  | string[]
-  | ((payload: unknown) => string[]);
+  | RevalidationTarget[]
+  | ((payload: unknown) => RevalidationTarget[]);
 
 type HandleRequestOptions = {
   request: Request;
@@ -74,10 +83,22 @@ function applyRevalidation(
     ? revalidateTags(payload)
     : revalidateTags;
 
-  for (const tag of tags) {
-    if (tag) {
-      revalidateTag(tag);
+  for (const entry of tags) {
+    const tag = typeof entry === "string" ? entry : entry.tag;
+    const strategy = typeof entry === "string" ? "max" : (entry.strategy ?? "max");
+
+    if (!tag) {
+      continue;
     }
+
+    if (strategy === "immediate" || strategy === "update") {
+      // Route Handlers should use immediate expiry via revalidateTag.
+      // updateTag is intended for Server Actions.
+      revalidateTag(tag, { expire: 0 });
+      continue;
+    }
+
+    revalidateTag(tag, "max");
   }
 }
 
@@ -124,4 +145,3 @@ export async function handleRequest({
     return NextResponse.json({ error: fallbackError }, { status: 502 });
   }
 }
-

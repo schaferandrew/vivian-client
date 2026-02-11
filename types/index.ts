@@ -98,6 +98,30 @@ export interface DuplicateInfo {
   message?: string;
 }
 
+export type DocumentType = "hsa_receipt" | "charitable_receipt";
+
+export interface ChatAttachmentInput {
+  attachment_id?: string;
+  document_type: DocumentType;
+  temp_file_path: string;
+  filename?: string;
+  mime_type?: string;
+}
+
+export interface DocumentWorkflowArtifact {
+  workflow_id: string;
+  attachment_id?: string;
+  document_type: DocumentType | string;
+  status: "ready_for_confirmation" | "unsupported" | "parse_error" | "configuration_error" | string;
+  message: string;
+  temp_file_path?: string;
+  filename?: string;
+  parsed_data?: ParsedReceipt;
+  is_duplicate?: boolean;
+  duplicate_info?: DuplicateInfo[];
+  duplicate_check_error?: string;
+}
+
 // Bulk import types
 export interface BulkImportFileResult {
   filename: string;
@@ -272,6 +296,7 @@ export interface ChatMessage {
   confirmationRequest?: ConfirmationRequestPayload;
   isStreaming?: boolean;
   toolsCalled?: ToolCallInfo[];
+  documentWorkflows?: DocumentWorkflowArtifact[];
 }
 
 export interface ToolCallInfo {
@@ -372,6 +397,7 @@ export interface ChatMessageResponse {
   session_id: string;
   chat_id: string;
   tools_called?: ToolCallInfo[];
+  document_workflows?: DocumentWorkflowArtifact[];
 }
 
 export interface ChatWithMessages extends Chat {
