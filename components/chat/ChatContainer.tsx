@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useChatStore } from "@/lib/stores/chat";
 import { cn } from "@/lib/utils";
-import type { ChatMessage as ChatMessageType } from "@/types";
+import type { ChatMessage as ChatMessageType, ToolCallInfo } from "@/types";
 import { DocumentWorkflowCard } from "@/components/chat/DocumentWorkflowCard";
 
 import MarkdownRenderer from '../ui/MarkdownRenderer';
@@ -70,6 +71,15 @@ function formatToolResult(toolName: string, output?: string): string | null {
       }
     }
 
+    if (toolName === "check_for_duplicates" && parsed && typeof parsed === "object") {
+      const isDuplicate = (parsed as { is_duplicate?: boolean }).is_duplicate;
+      const count = (parsed as { total_duplicates_found?: number }).total_duplicates_found ?? 0;
+      if (isDuplicate) {
+        return `Result: ${count} duplicate${count === 1 ? "" : "s"} found`;
+      }
+      return "Result: No duplicates found";
+    }
+
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       const entries = Object.entries(parsed)
         .slice(0, 4)
@@ -83,6 +93,46 @@ function formatToolResult(toolName: string, output?: string): string | null {
     const compact = output.length > 180 ? `${output.slice(0, 180)}...` : output;
     return `Result: ${compact}`;
   }
+}
+
+function CollapsibleToolResult({ tool }: { tool: ToolCallInfo }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const summary = formatToolResult(tool.tool_name, tool.output);
+  
+  if (!summary) return null;
+  
+  return (
+    <div className="text-xs text-muted-foreground">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-1.5 hover:text-foreground transition-colors w-full text-left group"
+        type="button"
+      >
+        <div className="flex items-center gap-1 text-[10px] opacity-60 group-hover:opacity-100">
+          {isExpanded ? (
+            <ChevronUp className="w-3 h-3" />
+          ) : (
+            <ChevronDown className="w-3 h-3" />
+          )}
+          <span>{isExpanded ? "Hide" : "Show"}</span>
+        </div>
+        <span className="italic truncate flex-1">{formatToolCall(tool.server_id, tool.tool_name, tool.input)}</span>
+      </button>
+      
+      {isExpanded ? (
+        <div className="mt-1.5 space-y-1.5 pl-4 border-l-2 border-border/50">
+          <p className="italic">{summary}</p>
+          {tool.output && (
+            <div className="p-2 bg-muted rounded text-[10px] font-mono overflow-x-auto">
+              <pre className="whitespace-pre-wrap break-all">{tool.output}</pre>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="pl-6 italic opacity-70">{summary}</p>
+      )}
+    </div>
+  );
 }
 
 function ChatMessage({ message }: { message: ChatMessageType }) {
@@ -114,12 +164,10 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
         {message.role === "agent" && message.toolsCalled && message.toolsCalled.length > 0 && (
           <div className="mt-2 space-y-1 border-t border-border/50 pt-2">
             {message.toolsCalled.map((tool, idx) => (
-              <div key={`${tool.server_id}-${tool.tool_name}-${idx}`} className="text-xs italic text-muted-foreground">
-                <p>{formatToolCall(tool.server_id, tool.tool_name, tool.input)}</p>
-                {formatToolResult(tool.tool_name, tool.output) && (
-                  <p>{formatToolResult(tool.tool_name, tool.output)}</p>
-                )}
-              </div>
+              <CollapsibleToolResult
+                key={`${tool.server_id}-${tool.tool_name}-${idx}`}
+                tool={tool}
+              />
             ))}
           </div>
         )}
