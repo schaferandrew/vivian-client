@@ -72,12 +72,19 @@ function formatToolResult(toolName: string, output?: string): string | null {
     }
 
     if (toolName === "check_for_duplicates" && parsed && typeof parsed === "object") {
-      const isDuplicate = (parsed as { is_duplicate?: boolean }).is_duplicate;
-      const count = (parsed as { total_duplicates_found?: number }).total_duplicates_found ?? 0;
-      if (isDuplicate) {
-        return `Result: ${count} duplicate${count === 1 ? "" : "s"} found`;
+      const { is_duplicate, total_duplicates_found } = parsed as {
+        is_duplicate?: unknown;
+        total_duplicates_found?: unknown;
+      };
+      if (typeof is_duplicate === "boolean") {
+        const count =
+          typeof total_duplicates_found === "number" ? total_duplicates_found : 0;
+        if (is_duplicate) {
+          return `Result: ${count} duplicate${count === 1 ? "" : "s"} found`;
+        }
+        return "Result: No duplicates found";
       }
-      return "Result: No duplicates found";
+      // If the payload does not match the expected shape, fall through to generic formatting.
     }
 
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
