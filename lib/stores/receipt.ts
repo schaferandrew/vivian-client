@@ -1,8 +1,13 @@
 import { create } from "zustand";
-import type { ReceiptUploadState, ParsedReceipt, DuplicateInfo } from "@/types";
+import type { ReceiptUploadState, ParsedReceipt, DuplicateInfo, ExpenseCategory, CharitableDonationSchema, ExpenseSchema } from "@/types";
 
 interface ReceiptStore extends ReceiptUploadState {
-  // Actions
+  category: ExpenseCategory;
+  editedExpense: ExpenseSchema | undefined;
+  editedCharitableData: CharitableDonationSchema | undefined;
+  setCategory: (category: ExpenseCategory) => void;
+  setEditedExpense: (expense: ExpenseSchema | undefined) => void;
+  setEditedCharitableData: (data: CharitableDonationSchema | undefined) => void;
   setStep: (step: ReceiptUploadState["step"]) => void;
   setTempFilePath: (path: string) => void;
   setParsedData: (data: ParsedReceipt) => void;
@@ -17,7 +22,8 @@ interface ReceiptStore extends ReceiptUploadState {
   reset: () => void;
 }
 
-const initialState: ReceiptUploadState = {
+const initialState: ReceiptUploadState & { category: ExpenseCategory; editedExpense: ExpenseSchema | undefined; editedCharitableData: CharitableDonationSchema | undefined } = {
+  category: "hsa",
   step: "upload",
   tempFilePath: undefined,
   parsedData: undefined,
@@ -27,12 +33,24 @@ const initialState: ReceiptUploadState = {
   isUploading: false,
   isParsing: false,
   error: undefined,
+  editedExpense: undefined,
+  editedCharitableData: undefined,
 };
 
 export const useReceiptStore = create<ReceiptStore>((set) => ({
   ...initialState,
 
-  setStep: (step) => set({ step }),
+  setCategory: (category) => set({ category, editedExpense: undefined, editedCharitableData: undefined }),
+  setEditedExpense: (expense) => set({ editedExpense: expense }),
+  setEditedCharitableData: (data) => set({ editedCharitableData: data }),
+  setStep: (step) =>
+    set({
+      step,
+      parsedData: undefined,
+      parseIsDuplicate: undefined,
+      parseDuplicateInfo: undefined,
+      parseDuplicateCheckError: undefined,
+    }),
   setTempFilePath: (path) =>
     set({
       tempFilePath: path,
@@ -41,7 +59,22 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
       parseDuplicateInfo: undefined,
       parseDuplicateCheckError: undefined,
     }),
-  setParsedData: (data) => set({ parsedData: data }),
+  setParsedData: (data) => {
+    if (data.category === "charitable") {
+      return set({
+        parsedData: data,
+        editedCharitableData: data.charitable_data,
+        editedExpense: undefined,
+        category: "charitable",
+      });
+    }
+    return set({
+      parsedData: data,
+      editedExpense: data.expense,
+      editedCharitableData: undefined,
+      category: "hsa",
+    });
+  },
   setParseDuplicateInfo: (isDuplicate, duplicateInfo, checkError) =>
     set({
       parseIsDuplicate: isDuplicate,

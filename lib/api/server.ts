@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 import { ACCESS_TOKEN_COOKIE } from "@/lib/auth/constants";
-import type { UnreimbursedBalanceResponse } from "@/types";
+import type { UnreimbursedBalanceResponse, CharitableSummaryResponse } from "@/types";
 
 const AGENT_API_URL =
   process.env.AGENT_API_URL ||
@@ -47,5 +47,32 @@ export async function getUnreimbursedBalanceServer(): Promise<UnreimbursedBalanc
   }
 
   return payload as UnreimbursedBalanceResponse;
+}
+
+export async function getCharitableSummaryServer(taxYear?: string): Promise<CharitableSummaryResponse> {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
+
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  const url = taxYear 
+    ? `${AGENT_API_URL}/ledger/charitable/summary?year=${taxYear}`
+    : `${AGENT_API_URL}/ledger/charitable/summary`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(getMessageFromPayload(payload, response.status, response.statusText));
+  }
+
+  return payload as CharitableSummaryResponse;
 }
 

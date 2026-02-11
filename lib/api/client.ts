@@ -379,3 +379,26 @@ export async function bulkImportConfirm(
     }),
   });
 }
+
+// Charitable donation API
+export async function getCharitableSummary(
+  taxYear?: string
+): Promise<import("@/types").CharitableSummaryResponse> {
+  const params = taxYear ? `?year=${taxYear}` : "";
+  return fetchDirectApi(`/ledger/charitable/summary${params}`, {
+    method: "GET",
+  });
+}
+
+export async function getLedgerSummary(
+  year?: number,
+  statusFilter?: string
+): Promise<import("@/types").LedgerSummaryResponse> {
+  const params = new URLSearchParams();
+  if (year) params.set("year", year.toString());
+  if (statusFilter) params.set("status_filter", statusFilter);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return fetchDirectApi(`/ledger/summary${query}`, {
+    method: "GET",
+  });
+}
