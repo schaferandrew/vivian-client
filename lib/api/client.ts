@@ -379,3 +379,22 @@ export async function bulkImportConfirm(
     }),
   });
 }
+
+// MCP Server Settings API
+export async function getMcpServerSettings(
+  serverId: string
+): Promise<import("@/types").MCPServerSettingsResponse> {
+  return fetchProxyApi(`/mcp/servers/${serverId}/settings`, {
+    method: "GET",
+  });
+}
+
+export async function updateMcpServerSettings(
+  serverId: string,
+  settings: Record<string, unknown>
+): Promise<{ mcp_server_id: string; settings: Record<string, unknown> }> {
+  return fetchProxyApi(`/mcp/servers/${serverId}/settings`, {
+    method: "PUT",
+    body: JSON.stringify({ settings }),
+  });
+}

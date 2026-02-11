@@ -346,6 +346,14 @@ export interface ModelSelectResponse {
 }
 
 // MCP server configuration types
+export interface MCPServerSettingsSchema {
+  key: string;
+  label: string;
+  type: "string" | "number" | "boolean";
+  required: boolean;
+  default?: string | number | boolean;
+}
+
 export interface MCPServerInfo {
   id: string;
   name: string;
@@ -354,11 +362,22 @@ export interface MCPServerInfo {
   default_enabled: boolean;
   enabled: boolean;
   source: "builtin" | "custom" | string;
+  requires_connection: string | null;  // e.g., "google"
+  settings_schema: MCPServerSettingsSchema[] | null;
+  settings: Record<string, unknown> | null;
+  editable: boolean;  // whether current user can edit settings
 }
 
 export interface MCPServersResponse {
   servers: MCPServerInfo[];
   enabled_server_ids: string[];
+}
+
+export interface MCPServerSettingsResponse {
+  mcp_server_id: string;
+  settings: Record<string, unknown>;
+  settings_schema: MCPServerSettingsSchema[];
+  editable: boolean;
 }
 
 export interface MCPEnabledUpdateResponse {
@@ -370,6 +389,16 @@ export interface MCPTestAddResponse {
   a: number;
   b: number;
   sum: number;
+}
+
+// Google integration status types
+export interface GoogleIntegrationStatus {
+  connected: boolean;
+  provider_email: string | null;
+  connected_by: string | null;
+  connected_at: string | null;
+  scopes: string[] | null;
+  message: string;
 }
 
 // Chat history types

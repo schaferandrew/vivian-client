@@ -13,6 +13,7 @@ import {
   Link2,
   LogOut,
   Server,
+  Settings2,
   User as UserIcon,
   XCircle,
 } from "lucide-react";
@@ -23,17 +24,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FieldErrorText, FormField } from "@/components/ui/form-field";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useChatStore } from "@/lib/stores/chat";
-import { runMcpAdditionTest, updateEnabledMcpServers } from "@/lib/api/client";
+import {
+  getMcpServerSettings,
+  runMcpAdditionTest,
+  updateEnabledMcpServers,
+  updateMcpServerSettings,
+} from "@/lib/api/client";
+import type {
+  MCPServerInfo,
+  MCPServerSettingsSchema,
+  GoogleIntegrationStatus,
+} from "@/types";
 
-type GoogleStatus = {
-  connected: boolean;
-  outdated: boolean;
-  has_required_targets: boolean;
-  last_connected_at?: string | null;
-  updated_at: string;
-  message: string;
-};
+import type {
+  MCPServerInfo,
+  MCPServerSettingsSchema,
+  GoogleIntegrationStatus,
+} from "@/types";
+
+type GoogleStatus = GoogleIntegrationStatus;
 
 type ProfilePayload = {
   user: {
@@ -153,6 +165,16 @@ export default function SettingsPage() {
   const [testErrorByServer, setTestErrorByServer] = useState<Record<string, string>>({});
   const [runningTestServerId, setRunningTestServerId] = useState<string | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
+
+  // MCP Settings state
+  const [expandedSettingsServerId, setExpandedSettingsServerId] = useState<string | null>(null);
+  const [mcpSettingsLoading, setMcpSettingsLoading] = useState<string | null>(null);
+  const [mcpSettingsSaving, setMcpSettingsSaving] = useState<string | null>(null);
+  const [mcpSettingsValues, setMcpSettingsValues] = useState<Record<string, Record<string, unknown>>>({});
+  const [mcpSettingsSchema, setMcpSettingsSchema] = useState<Record<string, MCPServerSettingsSchema[]>>({});
+  const [mcpSettingsEditable, setMcpSettingsEditable] = useState<Record<string, boolean>>({});
+  const [mcpSettingsError, setMcpSettingsError] = useState<Record<string, string | null>>({});
+  const [mcpSettingsSuccess, setMcpSettingsSuccess] = useState<Record<string, string | null>>({});
 
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
@@ -512,6 +534,80 @@ export default function SettingsPage() {
     }
   }, [testA, testB]);
 
+  // MCP Settings functions
+  const handleExpandSettings = useCallback(async (serverId: string, server: MCPServerInfo) => {
+    if (expandedSettingsServerId === serverId) {
+      setExpandedSettingsServerId(null);
+      return;
+    }
+
+    setExpandedSettingsServerId(serverId);
+    setMcpSettingsLoading(serverId);
+    setMcpSettingsError((previous) => ({ ...previous, [serverId]: null }));
+
+    try {
+      const settings = await getMcpServerSettings(serverId);
+      setMcpSettingsValues((previous) => ({
+        ...previous,
+        [serverId]: settings.settings || {},
+      }));
+      setMcpSettingsSchema((previous) => ({
+        ...previous,
+        [serverId]: settings.settings_schema || [],
+      }));
+      setMcpSettingsEditable((previous) => ({
+        ...previous,
+        [serverId]: settings.editable,
+      }));
+    } catch (error) {
+      setMcpSettingsError((previous) => ({
+        ...previous,
+        [serverId]: error instanceof Error ? error.message : "Could not load settings.",
+      }));
+    } finally {
+      setMcpSettingsLoading(null);
+    }
+  }, [expandedSettingsServerId]);
+
+  const handleSaveMcpSettings = useCallback(async (serverId: string, server: MCPServerInfo) => {
+    setMcpSettingsSaving(serverId);
+    setMcpSettingsError((previous) => ({ ...previous, [serverId]: null }));
+    setMcpSettingsSuccess((previous) => ({ ...previous, [serverId]: null }));
+
+    try {
+      const values = mcpSettingsValues[serverId] || {};
+      await updateMcpServerSettings(serverId, values);
+      setMcpSettingsSuccess((previous) => ({
+        ...previous,
+        [serverId]: "Settings saved.",
+      }));
+      // Refresh servers list to get updated state
+      await useChatStore.getState().fetchMcpServers();
+    } catch (error) {
+      setMcpSettingsError((previous) => ({
+        ...previous,
+        [serverId]: error instanceof Error ? error.message : "Could not save settings.",
+      }));
+    } finally {
+      setMcpSettingsSaving(null);
+    }
+  }, [mcpSettingsValues]);
+
+  const handleMcpSettingChange = useCallback(
+    (serverId: string, key: string, value: unknown) => {
+      setMcpSettingsValues((previous) => ({
+        ...previous,
+        [serverId]: {
+          ...(previous[serverId] || {}),
+          [key]: value,
+        },
+      }));
+      // Clear success message when user makes changes
+      setMcpSettingsSuccess((previous) => ({ ...previous, [serverId]: null }));
+    },
+    []
+  );
+
   const statusTone = googleStatus?.connected ? "text-[var(--success-600)]" : "text-[var(--error-700)]";
   const statusIcon = googleStatus?.connected ? (
     <CheckCircle2 className="w-4 h-4 text-[var(--success-600)]" />
@@ -817,16 +913,20 @@ export default function SettingsPage() {
                       {googleStatus && (
                         <div className="text-sm text-muted-foreground space-y-1">
                           <p>{googleStatus.message}</p>
-                          {googleStatus.last_connected_at && (
+                          {googleStatus.provider_email && (
+                            <p>Connected as: {googleStatus.provider_email}</p>
+                          )}
+                          {googleStatus.connected_by && (
+                            <p>Set up by: {googleStatus.connected_by}</p>
+                          )}
+                          {googleStatus.connected_at && (
                             <p>
-                              Last connected: {new Date(googleStatus.last_connected_at).toLocaleString()}
+                              Connected: {new Date(googleStatus.connected_at).toLocaleDateString()}
                             </p>
                           )}
-                          {!googleStatus.has_required_targets && (
-                            <p>
-                              Folder IDs or spreadsheet ID are incomplete. Set
-                              ` VIVIAN_API_MCP_REIMBURSED_FOLDER_ID`, ` VIVIAN_API_MCP_UNREIMBURSED_FOLDER_ID`,
-                              and ` VIVIAN_API_MCP_SHEETS_SPREADSHEET_ID`.
+                          {googleStatus.scopes && googleStatus.scopes.length > 0 && (
+                            <p className="text-xs">
+                              Scopes: {googleStatus.scopes.join(", ")}
                             </p>
                           )}
                         </div>
@@ -911,16 +1011,32 @@ export default function SettingsPage() {
                       )}
                       {mcpServers.map((server) => {
                         const canRunAdditionTest = server.tools.includes("add_numbers");
-                        const isExpanded = expandedTestServerId === server.id;
+                        const isExpandedTest = expandedTestServerId === server.id;
                         const testResult = testResultByServer[server.id];
                         const testError = testErrorByServer[server.id];
                         const isRunningThisTest = runningTestServerId === server.id;
+                        const isExpandedSettings = expandedSettingsServerId === server.id;
+                        const settingsSchema = mcpSettingsSchema[server.id] || [];
+                        const settingsValues = mcpSettingsValues[server.id] || {};
+                        const settingsEditable = mcpSettingsEditable[server.id] ?? server.editable;
+                        const settingsLoading = mcpSettingsLoading === server.id;
+                        const settingsSaving = mcpSettingsSaving === server.id;
+                        const settingsError = mcpSettingsError[server.id];
+                        const settingsSuccess = mcpSettingsSuccess[server.id];
+                        const hasSettings = settingsSchema.length > 0;
 
                         return (
                           <div key={server.id} className="rounded-md border border-border p-3">
                             <div className="flex items-center justify-between gap-4">
                               <div>
-                                <p className="font-medium text-sm">{server.name}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm">{server.name}</p>
+                                  {server.requires_connection && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                      Requires: {server.requires_connection}
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-xs text-muted-foreground">{server.description}</p>
                                 <p className="text-[11px] text-[var(--neutral-500)] mt-1">
                                   {server.source === "builtin" ? "Built-in" : "Custom"} · Tools: {server.tools.join(", ")}
@@ -928,6 +1044,21 @@ export default function SettingsPage() {
                               </div>
 
                               <div className="flex items-center gap-2">
+                                {hasSettings && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleExpandSettings(server.id, server)}
+                                  >
+                                    {isExpandedSettings ? (
+                                      <Settings2 className="w-4 h-4 mr-1" />
+                                    ) : (
+                                      <Settings2 className="w-4 h-4 mr-1" />
+                                    )}
+                                    Settings
+                                  </Button>
+                                )}
+
                                 {canRunAdditionTest && (
                                   <Button
                                     variant="ghost"
@@ -938,7 +1069,7 @@ export default function SettingsPage() {
                                       )
                                     }
                                   >
-                                    {isExpanded ? (
+                                    {isExpandedTest ? (
                                       <ChevronDown className="w-4 h-4 mr-1" />
                                     ) : (
                                       <ChevronRight className="w-4 h-4 mr-1" />
@@ -957,7 +1088,118 @@ export default function SettingsPage() {
                               </div>
                             </div>
 
-                            {isExpanded && canRunAdditionTest && (
+                            {/* MCP Settings Form */}
+                            {isExpandedSettings && hasSettings && (
+                              <div className="mt-3 pt-3 border-t border-border space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    Server Configuration
+                                  </p>
+                                  {!settingsEditable && (
+                                    <span className="text-xs text-muted-foreground">
+                                      Read-only (owner only)
+                                    </span>
+                                  )}
+                                </div>
+
+                                {settingsLoading && (
+                                  <p className="text-sm text-muted-foreground">Loading settings...</p>
+                                )}
+
+                                {!settingsLoading && (
+                                  <div className="space-y-3">
+                                    {settingsSchema.map((field) => {
+                                      const value = settingsValues[field.key];
+                                      return (
+                                        <div key={field.key} className="grid gap-1.5">
+                                          <label className="text-sm font-medium text-foreground">
+                                            {field.label}
+                                            {field.required && <span className="text-[var(--error-600)] ml-1">*</span>}
+                                          </label>
+                                          {field.type === "string" && (
+                                            <Input
+                                              value={(value as string) || ""}
+                                              onChange={(e) =>
+                                                handleMcpSettingChange(server.id, field.key, e.target.value)
+                                              }
+                                              placeholder={field.default?.toString()}
+                                              disabled={!settingsEditable}
+                                            />
+                                          )}
+                                          {field.type === "number" && (
+                                            <Input
+                                              type="number"
+                                              value={(value as number) || ""}
+                                              onChange={(e) =>
+                                                handleMcpSettingChange(
+                                                  server.id,
+                                                  field.key,
+                                                  e.target.value ? Number(e.target.value) : undefined
+                                                )
+                                              }
+                                              placeholder={field.default?.toString()}
+                                              disabled={!settingsEditable}
+                                            />
+                                          )}
+                                          {field.type === "boolean" && (
+                                            <div className="flex items-center gap-2">
+                                              <Checkbox
+                                                checked={(value as boolean) || false}
+                                                onCheckedChange={(checked) =>
+                                                  handleMcpSettingChange(server.id, field.key, checked === true)
+                                                }
+                                                disabled={!settingsEditable}
+                                                id={`${server.id}-${field.key}`}
+                                              />
+                                              <label
+                                                htmlFor={`${server.id}-${field.key}`}
+                                                className="text-sm text-muted-foreground"
+                                              >
+                                                {field.default === true ? "Enabled" : "Disabled"}
+                                              </label>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+
+                                      {settingsEditable && (
+                                        <div className="flex items-center gap-2 pt-2">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => handleSaveMcpSettings(server.id, server)}
+                                            disabled={settingsSaving}
+                                          >
+                                            {settingsSaving ? "Saving..." : "Save Settings"}
+                                          </Button>
+                                          {settingsSuccess && (
+                                            <span className="text-sm text-[var(--success-600)]">
+                                              {settingsSuccess}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {settingsError && (
+                                        <p className="text-sm text-[var(--error-700)]">{settingsError}</p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                                      )}
+
+                                    { </div>
+                                   settingsError && (
+                                      <p className="text-sm text-[var(--error-700)]">{settingsError}</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Addition Test */}
+                            {isExpandedTest && canRunAdditionTest && (
                               <div className="mt-3 pt-3 border-t border-border space-y-3">
                                 <p className="text-xs text-muted-foreground">
                                   Run protocol test for `{server.id}`.
