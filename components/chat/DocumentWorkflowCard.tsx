@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 import Link from "next/link";
 
@@ -17,6 +17,7 @@ import { ConfidenceBadge } from "@/components/receipt/ReceiptStatusBadge";
 import { ErrorPanel, WarningPanel } from "@/components/receipt/StatusPanels";
 import { useDuplicateCheck, useReceiptConfirmation } from "@/lib/hooks/useReceiptWorkflow";
 import { CharitableExpenseEditor } from "@/components/receipt/CharitableExpenseEditor";
+import { useChatStore } from "@/lib/stores/chat";
 import type {
   DocumentWorkflowArtifact,
   ExpenseSchema,
@@ -51,10 +52,32 @@ function CategoryToggle({ value, onChange }: { value: ExpenseCategory; onChange:
   );
 }
 
+function CompletedWorkflowCard({ workflow }: { workflow: DocumentWorkflowArtifact }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+      <CheckCircle2 className="w-4 h-4 text-[var(--success-600)] shrink-0" />
+      <span className="text-sm text-foreground truncate">{workflow.filename || "Receipt"}</span>
+      <span className="text-xs text-[var(--success-600)] ml-auto shrink-0">Saved</span>
+    </div>
+  );
+}
+
 function ReceiptConfirmationCard({ workflow, onCancel }: { workflow: DocumentWorkflowArtifact; onCancel?: () => void }) {
   const parsed = workflow.parsed_data as ParsedReceipt | undefined;
   const tempFilePath = workflow.temp_file_path;
-  const [step, setStep] = useState<"review" | "confirm" | "success" | "canceled">("review");
+  const { markWorkflowCompleted, isWorkflowCompleted } = useChatStore();
+  const alreadyCompleted = isWorkflowCompleted(workflow.workflow_id);
+  const [step, setStep] = useState<"review" | "confirm" | "success" | "canceled" | "collapsed">(
+    alreadyCompleted ? "collapsed" : "review"
+  );
+  const autoCollapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup auto-collapse timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoCollapseTimer.current) clearTimeout(autoCollapseTimer.current);
+    };
+  }, []);
 
   // Category state - initialize from parsed_data.suggested_category
   const [category, setCategory] = useState<ExpenseCategory>(
@@ -187,12 +210,21 @@ function ReceiptConfirmationCard({ workflow, onCancel }: { workflow: DocumentWor
 
     if (result.success) {
       setStep("success");
+      markWorkflowCompleted(workflow.workflow_id);
+      // Auto-collapse after 2 seconds
+      autoCollapseTimer.current = setTimeout(() => {
+        setStep("collapsed");
+      }, 2000);
     } else if (result.isDuplicate) {
       // Update duplicate state with submit-time detection results
       setDuplicateState(true, result.duplicateInfo || []);
       setForceImport(false);
     }
   };
+
+  if (step === "collapsed") {
+    return <CompletedWorkflowCard workflow={workflow} />;
+  }
 
   if (step === "success") {
     return (

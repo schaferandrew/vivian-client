@@ -103,16 +103,16 @@ export interface ConfirmReceiptResponse {
 
 // Duplicate detection types
 export interface DuplicateInfo {
-  entry_id: string;
-  provider: string;
-  service_date?: string;
+  entry_id?: string;
+  provider?: string;
+  date?: string;
   paid_date?: string;
   amount: number;
-  hsa_eligible: boolean;
-  status: string;
+  hsa_eligible?: boolean;
+  status?: string;
   reimbursement_date?: string;
   drive_file_id?: string;
-  confidence: number;
+  confidence?: number;
   match_type: "exact" | "fuzzy_date";
   days_difference?: number;
   message?: string;

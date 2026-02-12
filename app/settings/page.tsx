@@ -33,7 +33,6 @@ import {
   updateMcpServerSettings,
 } from "@/lib/api/client";
 import type {
-  MCPServerInfo,
   MCPServerSettingsSchema,
   GoogleIntegrationStatus,
 } from "@/types";
@@ -168,16 +167,6 @@ export default function SettingsPage() {
   const [mcpSettingsEditable, setMcpSettingsEditable] = useState<Record<string, boolean>>({});
   const [mcpSettingsError, setMcpSettingsError] = useState<Record<string, string | null>>({});
   const [mcpSettingsSuccess, setMcpSettingsSuccess] = useState<Record<string, string | null>>({});
-  
-  // Legacy flat settings for backward compatibility (deprecated)
-  const [legacyMcpSettings, setLegacyMcpSettings] = useState({
-    mcp_reimbursed_folder_id: "",
-    mcp_unreimbursed_folder_id: "",
-    mcp_sheets_spreadsheet_id: "",
-    charitable_drive_folder_id: "",
-    charitable_spreadsheet_id: "",
-    charitable_worksheet_name: "",
-  });
 
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
@@ -291,8 +280,6 @@ export default function SettingsPage() {
       setLoadingGoogleStatus(false);
     }
   }, []);
-
-  const MCP_SETTINGS_PROXY_URL = "/api/agent/mcp/settings";
 
   const fetchHomeSettings = useCallback(async () => {
     if (!canManageHome) {
@@ -540,7 +527,7 @@ export default function SettingsPage() {
   }, [testA, testB]);
 
   // MCP Settings functions
-  const handleExpandSettings = useCallback(async (serverId: string, server: MCPServerInfo) => {
+  const handleExpandSettings = useCallback(async (serverId: string) => {
     if (expandedSettingsServerId === serverId) {
       setExpandedSettingsServerId(null);
       return;
@@ -574,7 +561,7 @@ export default function SettingsPage() {
     }
   }, [expandedSettingsServerId]);
 
-  const handleSaveMcpSettings = useCallback(async (serverId: string, server: MCPServerInfo) => {
+  const handleSaveMcpSettings = useCallback(async (serverId: string) => {
     setMcpSettingsSaving(serverId);
     setMcpSettingsError((previous) => ({ ...previous, [serverId]: null }));
     setMcpSettingsSuccess((previous) => ({ ...previous, [serverId]: null }));
@@ -1057,7 +1044,7 @@ export default function SettingsPage() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleExpandSettings(server.id, server)}
+                                    onClick={() => handleExpandSettings(server.id)}
                                   >
                                     {isExpandedSettings ? (
                                       <Settings2 className="w-4 h-4 mr-1" />
@@ -1191,7 +1178,7 @@ export default function SettingsPage() {
                                         <div className="flex items-center gap-2 pt-2">
                                           <Button
                                             size="sm"
-                                            onClick={() => handleSaveMcpSettings(server.id, server)}
+                                            onClick={() => handleSaveMcpSettings(server.id)}
                                             disabled={settingsSaving}
                                           >
                                             {settingsSaving ? "Saving..." : "Save Settings"}

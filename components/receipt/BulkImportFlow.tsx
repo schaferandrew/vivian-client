@@ -20,7 +20,7 @@ import {
   ChevronUp,
   Save,
 } from "lucide-react";
-import type { BulkImportFileResult, DuplicateInfo, ReimbursementStatus } from "@/types";
+import type { BulkImportConfirmItem, BulkImportFileResult, DuplicateInfo, ExpenseCategory, ReimbursementStatus } from "@/types";
 
 function UploadStep() {
   const { setStep, setError, setIsScanning, setScanningProgress, setResults, setSummary } =
@@ -177,18 +177,22 @@ function DuplicateDetailPanel({ duplicates }: { duplicates: DuplicateInfo[] }) {
           {duplicates.map((dup, idx) => (
             <div key={idx} className="p-2 bg-white rounded border border-amber-200 text-sm">
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-muted-foreground">Provider:</span> {dup.provider}
-                </div>
+                {dup.provider && (
+                  <div>
+                    <span className="text-muted-foreground">Provider:</span> {dup.provider}
+                  </div>
+                )}
                 <div>
                   <span className="text-muted-foreground">Amount:</span> ${dup.amount.toFixed(2)}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Date:</span> {dup.service_date || "N/A"}
+                  <span className="text-muted-foreground">Date:</span> {dup.date || "N/A"}
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Status:</span> {dup.status}
-                </div>
+                {dup.status && (
+                  <div>
+                    <span className="text-muted-foreground">Status:</span> {dup.status}
+                  </div>
+                )}
               </div>
               {dup.days_difference !== undefined && dup.days_difference !== null && (
                 <div className="mt-1 text-amber-700">
@@ -198,7 +202,9 @@ function DuplicateDetailPanel({ duplicates }: { duplicates: DuplicateInfo[] }) {
               {dup.message && (
                 <div className="mt-1 text-amber-700">{dup.message}</div>
               )}
-              <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
+              {dup.entry_id && (
+                <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
+              )}
             </div>
           ))}
         </div>
@@ -215,6 +221,7 @@ function ReceiptRow({
   defaultStatusLabel,
   onToggle,
   onStatusOverrideChange,
+  onCategoryChange,
 }: {
   result: BulkImportFileResult;
   isSelected: boolean;
@@ -223,12 +230,15 @@ function ReceiptRow({
   defaultStatusLabel: string;
   onToggle: () => void;
   onStatusOverrideChange?: (next: ReimbursementStatus | "default") => void;
+  onCategoryChange?: (next: ExpenseCategory) => void;
 }) {
   const canSelect =
     result.status === "new" ||
     result.status === "flagged" ||
     (allowDuplicateSelection &&
       (result.status === "duplicate_exact" || result.status === "duplicate_fuzzy"));
+
+  const isCharitable = result.category === "charitable";
 
   const badge = {
     new: <Badge className="bg-green-100 text-green-800">New</Badge>,
@@ -239,6 +249,21 @@ function ReceiptRow({
     skipped: <Badge className="bg-gray-100 text-gray-800">Skipped</Badge>,
   }[result.status];
 
+  const categoryBadge = onCategoryChange ? (
+    <select
+      className="h-6 rounded border border-input bg-background px-1 text-xs font-medium"
+      value={result.category || "hsa"}
+      onChange={(e) => onCategoryChange(e.target.value as ExpenseCategory)}
+    >
+      <option value="hsa">HSA</option>
+      <option value="charitable">Charitable</option>
+    </select>
+  ) : isCharitable ? (
+    <Badge className="bg-purple-100 text-purple-800">Charitable</Badge>
+  ) : (
+    <Badge className="bg-blue-100 text-blue-800">HSA</Badge>
+  );
+
   return (
     <div className="p-4 border-b border-border last:border-0">
       <div className="flex items-start gap-4">
@@ -246,10 +271,11 @@ function ReceiptRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {badge}
+            {categoryBadge}
             <span className="font-medium truncate">{result.filename}</span>
           </div>
 
-          {result.expense && (
+          {result.expense && !isCharitable && (
             <div className="mt-2 grid grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Provider:</span> {result.expense.provider}
@@ -259,6 +285,20 @@ function ReceiptRow({
               </div>
               <div>
                 <span className="text-muted-foreground">Amount:</span> ${result.expense.amount.toFixed(2)}
+              </div>
+            </div>
+          )}
+
+          {result.charitable_data && isCharitable && (
+            <div className="mt-2 grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Organization:</span> {result.charitable_data.organization_name}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Date:</span> {result.charitable_data.donation_date || "N/A"}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Amount:</span> ${result.charitable_data.amount.toFixed(2)}
               </div>
             </div>
           )}
@@ -281,7 +321,7 @@ function ReceiptRow({
             <DuplicateDetailPanel duplicates={result.duplicate_info} />
           )}
 
-          {canSelect && isSelected && onStatusOverrideChange && (
+          {canSelect && isSelected && onStatusOverrideChange && !isCharitable && (
             <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">
               <p className="text-xs text-muted-foreground">
                 Status for this receipt:
@@ -304,9 +344,49 @@ function ReceiptRow({
 }
 
 function ReviewStep() {
-  const { results, summary, selectedIds, options, setOptions, toggleSelection, selectAll, deselectAll, setStep } =
+  const { results, summary, selectedIds, options, setOptions, toggleSelection, selectAll, deselectAll, setStep, updateResult } =
     useBulkImportStore();
   const globalStatusLabel = options.statusOverride === "reimbursed" ? "Already Reimbursed" : "Save for Future";
+
+  const allResults = [...results.new, ...results.flagged, ...results.duplicates];
+  const hasCharitable = allResults.some((r) => r.category === "charitable");
+  const hasHsa = allResults.some((r) => r.category !== "charitable");
+
+  const handleCategoryChange = (result: BulkImportFileResult, next: ExpenseCategory) => {
+    if (!result.temp_file_path || result.category === next) return;
+    if (next === "charitable") {
+      // Switching HSA -> Charitable: map expense fields to charitable_data
+      const exp = result.expense;
+      updateResult(result.temp_file_path, {
+        category: "charitable",
+        charitable_data: result.charitable_data ?? (exp ? {
+          organization_name: exp.provider || "Unknown Organization",
+          donation_date: exp.service_date,
+          amount: exp.amount,
+          tax_deductible: true,
+        } : undefined),
+        expense: undefined,
+        // Clear stale duplicate info from the old category
+        duplicate_info: undefined,
+        status: result.status === "duplicate_exact" || result.status === "duplicate_fuzzy" ? "flagged" as const : result.status,
+      });
+    } else {
+      // Switching Charitable -> HSA: map charitable_data fields to expense
+      const don = result.charitable_data;
+      updateResult(result.temp_file_path, {
+        category: "hsa",
+        expense: result.expense ?? (don ? {
+          provider: don.organization_name || "Unknown Provider",
+          service_date: don.donation_date,
+          amount: don.amount,
+          hsa_eligible: true,
+        } : undefined),
+        charitable_data: undefined,
+        duplicate_info: undefined,
+        status: result.status === "duplicate_exact" || result.status === "duplicate_fuzzy" ? "flagged" as const : result.status,
+      });
+    }
+  };
 
   const handleToggle = (tempPath: string) => {
     const isCurrentlySelected = selectedIds.has(tempPath);
@@ -384,37 +464,46 @@ function ReviewStep() {
         <span>Allow selecting potential duplicates (override during import)</span>
       </label>
 
-      <div className="rounded-lg border border-border p-4 space-y-3">
-        <p className="text-sm text-muted-foreground">Default reimbursement status for selected receipts:</p>
-        <div className="space-y-2">
-          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-            <input
-              type="radio"
-              name="bulk-status"
-              value="reimbursed"
-              checked={options.statusOverride === "reimbursed"}
-              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
-            />
-            <div>
-              <p className="font-medium">Already Reimbursed</p>
-              <p className="text-sm text-muted-foreground">I&apos;ve already been paid back from my HSA</p>
-            </div>
-          </label>
-          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-            <input
-              type="radio"
-              name="bulk-status"
-              value="unreimbursed"
-              checked={options.statusOverride === "unreimbursed"}
-              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
-            />
-            <div>
-              <p className="font-medium">Save for Future</p>
-              <p className="text-sm text-muted-foreground">Track these expenses for future reimbursement</p>
-            </div>
-          </label>
+      {hasHsa && (
+        <div className="rounded-lg border border-border p-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Default reimbursement status for {hasCharitable ? "HSA" : "selected"} receipts:
+          </p>
+          {hasCharitable && (
+            <p className="text-xs text-muted-foreground">
+              Charitable donations do not have a reimbursement status and are not affected by this setting.
+            </p>
+          )}
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
+              <input
+                type="radio"
+                name="bulk-status"
+                value="reimbursed"
+                checked={options.statusOverride === "reimbursed"}
+                onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
+              />
+              <div>
+                <p className="font-medium">Already Reimbursed</p>
+                <p className="text-sm text-muted-foreground">I&apos;ve already been paid back from my HSA</p>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
+              <input
+                type="radio"
+                name="bulk-status"
+                value="unreimbursed"
+                checked={options.statusOverride === "unreimbursed"}
+                onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
+              />
+              <div>
+                <p className="font-medium">Save for Future</p>
+                <p className="text-sm text-muted-foreground">Track these expenses for future reimbursement</p>
+              </div>
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="space-y-4 max-h-[500px] overflow-y-auto border rounded-lg">
         {results.new.length > 0 && (
@@ -444,6 +533,7 @@ function ReviewStep() {
                     },
                   });
                 }}
+                onCategoryChange={(next) => handleCategoryChange(result, next)}
               />
             ))}
           </div>
@@ -476,6 +566,7 @@ function ReviewStep() {
                     },
                   });
                 }}
+                onCategoryChange={(next) => handleCategoryChange(result, next)}
               />
             ))}
           </div>
@@ -508,6 +599,7 @@ function ReviewStep() {
                     },
                   });
                 }}
+                onCategoryChange={(next) => handleCategoryChange(result, next)}
               />
             ))}
           </div>
@@ -526,6 +618,7 @@ function ReviewStep() {
                 allowDuplicateSelection={false}
                 defaultStatusLabel={globalStatusLabel}
                 onToggle={() => {}}
+                onCategoryChange={(next) => handleCategoryChange(result, next)}
               />
             ))}
           </div>
@@ -555,19 +648,24 @@ function ConfirmStep() {
   );
   const selectedDuplicateCount = Array.from(selectedIds).filter((path) => duplicatePathSet.has(path)).length;
   const selectedRows = [...results.new, ...results.flagged, ...results.duplicates].filter(
-    (r) => r.temp_file_path && r.expense && selectedIds.has(r.temp_file_path)
+    (r) => r.temp_file_path && (r.expense || r.charitable_data) && selectedIds.has(r.temp_file_path)
   );
-  const selectedTotalAmount = selectedRows.reduce((sum, row) => sum + (row.expense?.amount || 0), 0);
+  const selectedTotalAmount = selectedRows.reduce(
+    (sum, row) => sum + (row.expense?.amount || row.charitable_data?.amount || 0),
+    0
+  );
 
   const handleImport = async () => {
-    const selectedItems = selectedRows.map((r) => {
+    const selectedItems: BulkImportConfirmItem[] = selectedRows.map((r) => {
       const tempPath = r.temp_file_path as string;
+      const isCharitable = r.category === "charitable";
       const perItemStatus = options.itemStatusOverrides[tempPath];
       return {
         temp_file_path: tempPath,
-        category: r.category!,
-        expense_data: r.expense!,
-        status: perItemStatus && perItemStatus !== "default" ? perItemStatus : undefined,
+        category: r.category || "hsa",
+        expense_data: isCharitable ? undefined : r.expense!,
+        charitable_data: isCharitable ? r.charitable_data! : undefined,
+        status: !isCharitable && perItemStatus && perItemStatus !== "default" ? perItemStatus : undefined,
       };
     });
 
