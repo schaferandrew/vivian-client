@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { checkReceiptDuplicate, confirmReceipt } from "@/lib/api/client";
-import type { DuplicateInfo, ExpenseSchema, ReimbursementStatus } from "@/types";
+import { checkReceiptDuplicate, checkCharitableDuplicate, confirmReceipt } from "@/lib/api/client";
+import type { CharitableDonationSchema, DuplicateInfo, ExpenseCategory, ExpenseSchema, ReimbursementStatus } from "@/types";
 
 export type TaskStatus = "pending" | "loading" | "success" | "error";
 
@@ -11,7 +11,11 @@ interface UseDuplicateCheckReturn {
   isDuplicate: boolean;
   duplicateInfo: DuplicateInfo[];
   error: string | null;
-  check: (expense: ExpenseSchema) => Promise<boolean>;
+  check: (params: {
+    category: ExpenseCategory;
+    expense?: ExpenseSchema;
+    charitable?: CharitableDonationSchema;
+  }) => Promise<boolean>;
   setDuplicateState: (isDuplicate: boolean, duplicateInfo: DuplicateInfo[]) => void;
   reset: () => void;
 }
@@ -22,20 +26,44 @@ export function useDuplicateCheck(): UseDuplicateCheckReturn {
   const [duplicateInfo, setDuplicateInfo] = useState<DuplicateInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const check = useCallback(async (expense: ExpenseSchema): Promise<boolean> => {
-    // Skip duplicate check if not HSA eligible
-    if (!expense.hsa_eligible) {
-      setIsDuplicate(false);
-      setDuplicateInfo([]);
-      setError(null);
-      return false;
+  const check = useCallback(async (params: {
+    category: ExpenseCategory;
+    expense?: ExpenseSchema;
+    charitable?: CharitableDonationSchema;
+  }): Promise<boolean> => {
+    const { category, expense, charitable } = params;
+
+    // Skip duplicate check based on category and data availability
+    if (category === "hsa") {
+      if (!expense || !expense.hsa_eligible) {
+        setIsDuplicate(false);
+        setDuplicateInfo([]);
+        setError(null);
+        return false;
+      }
+    } else if (category === "charitable") {
+      if (!charitable) {
+        setIsDuplicate(false);
+        setDuplicateInfo([]);
+        setError(null);
+        return false;
+      }
     }
 
     setIsChecking(true);
     setError(null);
 
     try {
-      const result = await checkReceiptDuplicate(expense);
+      let result;
+      if (category === "hsa" && expense) {
+        result = await checkReceiptDuplicate(expense);
+      } else if (category === "charitable" && charitable) {
+        result = await checkCharitableDuplicate(charitable);
+      } else {
+        setIsChecking(false);
+        return false;
+      }
+
       const hasDuplicates = Boolean(result.is_duplicate);
       setIsDuplicate(hasDuplicates);
       setDuplicateInfo(result.duplicate_info || []);
@@ -80,8 +108,10 @@ interface UseReceiptConfirmationReturn {
   sheetStatus: TaskStatus;
   submit: (params: {
     tempFilePath: string;
-    expense: ExpenseSchema;
-    status: ReimbursementStatus;
+    category: ExpenseCategory;
+    expense?: ExpenseSchema;
+    charitable?: CharitableDonationSchema;
+    status?: ReimbursementStatus;  // only used for HSA
     forceImport: boolean;
   }) => Promise<{ success: boolean; isDuplicate?: boolean; duplicateInfo?: DuplicateInfo[] }>;
   reset: () => void;
@@ -96,13 +126,17 @@ export function useReceiptConfirmation(): UseReceiptConfirmationReturn {
   const submit = useCallback(
     async ({
       tempFilePath,
+      category,
       expense,
+      charitable,
       status,
       forceImport,
     }: {
       tempFilePath: string;
-      expense: ExpenseSchema;
-      status: ReimbursementStatus;
+      category: ExpenseCategory;
+      expense?: ExpenseSchema;
+      charitable?: CharitableDonationSchema;
+      status?: ReimbursementStatus;
       forceImport: boolean;
     }): Promise<{ success: boolean; isDuplicate?: boolean; duplicateInfo?: DuplicateInfo[] }> => {
       setIsSubmitting(true);
@@ -113,13 +147,15 @@ export function useReceiptConfirmation(): UseReceiptConfirmationReturn {
       try {
         const result = await confirmReceipt({
           temp_file_path: tempFilePath,
-          expense_data: expense,
-          status,
+          category,
+          expense_data: category === "hsa" ? expense : undefined,
+          charitable_data: category === "charitable" ? charitable : undefined,
+          status: category === "hsa" ? status : undefined,
           force: forceImport,
         });
 
         if (result.is_duplicate && !forceImport) {
-          setError("Duplicate receipt detected. Review existing entries.");
+          setError(`Duplicate ${category === "charitable" ? "donation" : "receipt"} detected. Review existing entries.`);
           setDriveStatus("pending");
           setSheetStatus("pending");
           return {
@@ -130,7 +166,7 @@ export function useReceiptConfirmation(): UseReceiptConfirmationReturn {
         }
 
         if (!result.success) {
-          setError(result.message || "Failed to save receipt.");
+          setError(result.message || `Failed to save ${category === "charitable" ? "donation" : "receipt"}.`);
           setDriveStatus("error");
           setSheetStatus("error");
           return { success: false };
@@ -140,7 +176,7 @@ export function useReceiptConfirmation(): UseReceiptConfirmationReturn {
         setSheetStatus("success");
         return { success: true };
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to save receipt.";
+        const message = err instanceof Error ? err.message : `Failed to save ${category === "charitable" ? "donation" : "receipt"}.`;
         setError(message);
 
         if (message.includes("Drive upload failed")) {

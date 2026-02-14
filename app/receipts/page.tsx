@@ -15,16 +15,42 @@ import {
   ReimbursementStatusSelector,
   TaskStatusRow,
 } from "@/components/receipt/SharedReceiptComponents";
+import { CharitableExpenseEditor } from "@/components/receipt/CharitableExpenseEditor";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 import { Upload, FileText, ArrowLeft, FolderOpen, FileUp } from "lucide-react";
-import type { ReimbursementStatus, DuplicateInfo } from "@/types";
+import type { ReimbursementStatus, DuplicateInfo, ExpenseCategory } from "@/types";
 
 type UploadMode = "single" | "bulk";
 
+function CategoryToggle({ value, onChange }: { value: ExpenseCategory; onChange: (val: ExpenseCategory) => void }) {
+  return (
+    <div className="flex gap-2 mb-4">
+      <button
+        type="button"
+        onClick={() => onChange("hsa")}
+        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          value === "hsa" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+        }`}
+      >
+        HSA Medical
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("charitable")}
+        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          value === "charitable" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+        }`}
+      >
+        Charitable Donation
+      </button>
+    </div>
+  );
+}
+
 function SingleUploadStep() {
-  const { setStep, setTempFilePath, setUploading, isUploading, setError } = useReceiptStore();
+  const { setStep, setTempFilePath, setUploading, isUploading, setError, category, setCategory } = useReceiptStore();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: FileList | null) => {
@@ -55,32 +81,37 @@ function SingleUploadStep() {
   };
 
   return (
-    <div
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        onDrop(e.dataTransfer.files);
-      }}
-      className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-[var(--neutral-300)] transition-colors"
-    >
-      <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-      <p className="text-muted-foreground mb-2">Drag and drop a PDF receipt here</p>
-      <p className="text-sm text-[var(--neutral-400)] mb-4">or</p>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf"
-        onChange={handleFileInput}
-        className="hidden"
-      />
-      <Button
-        variant="outline"
-        disabled={isUploading}
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
+    <div>
+      <CategoryToggle value={category} onChange={setCategory} />
+      <div
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          onDrop(e.dataTransfer.files);
+        }}
+        className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-[var(--neutral-300)] transition-colors"
       >
-        {isUploading ? "Uploading..." : "Select File"}
-      </Button>
+        <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground mb-2">
+          {category === "charitable" ? "Drag and drop a charitable donation receipt here" : "Drag and drop a medical receipt here"}
+        </p>
+        <p className="text-sm text-[var(--neutral-400)] mb-4">or</p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf"
+          onChange={handleFileInput}
+          className="hidden"
+        />
+        <Button
+          variant="outline"
+          disabled={isUploading}
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {isUploading ? "Uploading..." : "Select File"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -98,18 +129,30 @@ function ReviewStep() {
     setParseDuplicateInfo,
     isParsing,
     setError,
+    category,
+    setCategory,
+    editedExpense,
+    editedCharitableData,
+    setEditedExpense,
+    setEditedCharitableData,
     reset,
   } = useReceiptStore();
 
-  const [editedExpense, setEditedExpense] = useState(parsedData?.expense);
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
-  // Sync editedExpense when parsedData changes (e.g., user uploads new receipt)
+
+
   useEffect(() => {
     if (parsedData?.expense) {
       setEditedExpense(parsedData.expense);
     }
-  }, [parsedData?.expense]);
+  }, [parsedData?.expense, setEditedExpense]);
+
+  useEffect(() => {
+    if (parsedData?.charitable_data) {
+      setEditedCharitableData(parsedData.charitable_data);
+    }
+  }, [parsedData?.charitable_data, setEditedCharitableData]);
 
   const handleParse = async () => {
     if (!tempFilePath) return;
@@ -125,7 +168,6 @@ function ReviewStep() {
         result.duplicate_info || [],
         result.duplicate_check_error
       );
-      setEditedExpense(result.parsed_data.expense);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Parsing failed");
     } finally {
@@ -145,8 +187,9 @@ function ReviewStep() {
 
   const needsReview = parsedData.confidence < 0.85;
 
-  const hasCoreFieldChanges =
+  const hasExpenseChanges =
     !!editedExpense &&
+    parsedData.expense &&
     (
       editedExpense.provider !== parsedData.expense.provider ||
       editedExpense.service_date !== parsedData.expense.service_date ||
@@ -154,12 +197,25 @@ function ReviewStep() {
       editedExpense.hsa_eligible !== parsedData.expense.hsa_eligible
     );
 
+  const hasCharitableChanges =
+    !!editedCharitableData &&
+    parsedData.charitable_data &&
+    (
+      editedCharitableData.organization_name !== parsedData.charitable_data.organization_name ||
+      editedCharitableData.amount !== parsedData.charitable_data.amount ||
+      editedCharitableData.donation_date !== parsedData.charitable_data.donation_date ||
+      editedCharitableData.tax_deductible !== parsedData.charitable_data.tax_deductible
+    );
+
+  const hasCoreFieldChanges = category === "hsa" ? hasExpenseChanges : hasCharitableChanges;
+
   const handleContinue = async () => {
-    if (!editedExpense) return;
+    if (category === "hsa" && !editedExpense) return;
+    if (category === "charitable" && !editedCharitableData) return;
 
     setIsCheckingDuplicates(true);
     try {
-      if (editedExpense.hsa_eligible) {
+      if (category === "hsa" && editedExpense && editedExpense.hsa_eligible) {
         const duplicateResult = await checkReceiptDuplicate(editedExpense);
         setParseDuplicateInfo(
           Boolean(duplicateResult.is_duplicate),
@@ -172,14 +228,18 @@ function ReviewStep() {
 
       setParsedData({
         ...parsedData,
-        expense: editedExpense,
+        suggested_category: category,
+        expense: category === "hsa" ? editedExpense : undefined,
+        charitable_data: category === "charitable" ? editedCharitableData : undefined,
       });
       setStep("confirm");
     } catch {
       setParseDuplicateInfo(false, [], "Duplicate check unavailable. You can still continue and final duplicate checks will run on save.");
       setParsedData({
         ...parsedData,
-        expense: editedExpense,
+        suggested_category: category,
+        expense: category === "hsa" ? editedExpense : undefined,
+        charitable_data: category === "charitable" ? editedCharitableData : undefined,
       });
       setStep("confirm");
     } finally {
@@ -189,6 +249,8 @@ function ReviewStep() {
 
   return (
     <div className="space-y-4">
+      <CategoryToggle value={category} onChange={setCategory} />
+
       <div className="flex items-center gap-2 mb-4">
         <ConfidenceBadge 
           confidence={Math.round(parsedData.confidence * 100)} 
@@ -208,10 +270,18 @@ function ReviewStep() {
         <WarningPanel>{parseDuplicateCheckError}</WarningPanel>
       )}
 
-      {editedExpense && (
+      {category === "hsa" && editedExpense && (
         <ExpenseEditor
           expense={editedExpense}
           onChange={(next) => setEditedExpense(next)}
+          needsReview={needsReview}
+        />
+      )}
+
+      {category === "charitable" && editedCharitableData && (
+        <CharitableExpenseEditor
+          donation={editedCharitableData}
+          onChange={(next) => setEditedCharitableData(next)}
           needsReview={needsReview}
         />
       )}
@@ -246,10 +316,9 @@ function ReviewStep() {
 }
 
 function ConfirmStep() {
-  const { tempFilePath, parsedData, setStep, setError, reset } = useReceiptStore();
+  const { tempFilePath, parsedData, setStep, setError, reset, category } = useReceiptStore();
   const [status, setStatus] = useState<ReimbursementStatus>("unreimbursed");
 
-  // Sync status when entering confirm step or when parsedData changes
   useEffect(() => {
     if (parsedData?.expense) {
       setStatus(parsedData.expense.hsa_eligible === false ? "not_hsa_eligible" : "unreimbursed");
@@ -275,8 +344,10 @@ function ConfirmStep() {
     try {
       const result = await confirmReceipt({
         temp_file_path: tempFilePath,
-        expense_data: parsedData.expense,
-        status,
+        category,
+        expense_data: category === "hsa" ? parsedData.expense : undefined,
+        charitable_data: category === "charitable" ? parsedData.charitable_data : undefined,
+        status: category === "hsa" ? status : undefined,
         force: forceImport,
       });
 
@@ -319,18 +390,26 @@ function ConfirmStep() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>
-
-      <ReimbursementStatusSelector
-        status={status}
-        onChange={setStatus}
-        radioName="status"
-      />
+      {category === "charitable" ? (
+        <div className="p-4 bg-secondary rounded-lg">
+          <p className="text-sm text-muted-foreground mb-2">Charitable donations are automatically tracked in your donation ledger.</p>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>
+          <ReimbursementStatusSelector
+            status={status}
+            onChange={setStatus}
+            radioName="status"
+          />
+        </>
+      )}
 
       {showTaskStatus && (
         <div className="space-y-2 rounded-lg border border-border bg-card p-3">
           <TaskStatusRow label="Uploading receipt to Google Drive" status={driveStatus} />
-          <TaskStatusRow label="Updating Google Sheet ledger" status={sheetStatus} />
+          {category === "hsa" && <TaskStatusRow label="Updating Google Sheet ledger" status={sheetStatus} />}
+          {category === "charitable" && <TaskStatusRow label="Updating charitable donation ledger" status={sheetStatus} />}
         </div>
       )}
 
@@ -347,7 +426,6 @@ function ConfirmStep() {
           variant="outline"
           onClick={() => {
             setStep("review");
-            // Clear errors and reset all duplicate/import state when going back
             setError(undefined);
             setDuplicateInfo(null);
             setForceImport(false);
@@ -382,6 +460,7 @@ function ConfirmStep() {
 
 function SuccessStep() {
   const { reset } = useReceiptStore();
+  const category = useReceiptStore((state) => state.category);
 
   return (
     <SuccessState
@@ -390,7 +469,11 @@ function SuccessStep() {
     >
       <div className="flex gap-3 justify-center">
         <Button variant="outline" onClick={() => reset()}>Upload Another</Button>
-        <Link href="/hsa"><Button>View HSA Dashboard</Button></Link>
+        {category === "charitable" ? (
+          <Link href="/donations"><Button>View Donations Dashboard</Button></Link>
+        ) : (
+          <Link href="/hsa"><Button>View HSA Dashboard</Button></Link>
+        )}
       </div>
     </SuccessState>
   );

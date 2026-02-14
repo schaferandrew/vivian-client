@@ -14,9 +14,22 @@ export interface ExpenseSchema {
   raw_model_output?: string;
 }
 
-// Parsed receipt from backend
+// Parsed receipt from backend (updated to support both HSA and charitable)
+export type ExpenseCategory = "hsa" | "charitable";
+
+export interface CharitableDonationSchema {
+  organization_name: string;
+  donation_date?: string; // ISO date string
+  amount: number;
+  tax_deductible: boolean;
+  description?: string;
+  raw_model_output?: string;
+}
+
 export interface ParsedReceipt {
-  expense: ExpenseSchema;
+  suggested_category?: ExpenseCategory;
+  expense?: ExpenseSchema;  // null for charitable
+  charitable_data?: CharitableDonationSchema;
   confidence: number;
   parsing_errors: string[];
 }
@@ -56,6 +69,11 @@ export interface CheckDuplicateRequest {
   fuzzy_days?: number;
 }
 
+export interface CheckCharitableDuplicateRequest {
+  charitable_data: CharitableDonationSchema;
+  fuzzy_days?: number;
+}
+
 export interface CheckDuplicateResponse {
   is_duplicate: boolean;
   duplicate_info: DuplicateInfo[];
@@ -65,8 +83,10 @@ export interface CheckDuplicateResponse {
 
 export interface ConfirmReceiptRequest {
   temp_file_path: string;
-  expense_data: ExpenseSchema;
-  status: ReimbursementStatus;
+  category?: ExpenseCategory;
+  expense_data?: ExpenseSchema;
+  charitable_data?: CharitableDonationSchema;
+  status?: ReimbursementStatus;
   reimbursement_date?: string;
   notes?: string;
   force?: boolean;
@@ -83,22 +103,22 @@ export interface ConfirmReceiptResponse {
 
 // Duplicate detection types
 export interface DuplicateInfo {
-  entry_id: string;
-  provider: string;
-  service_date?: string;
+  entry_id?: string;
+  provider?: string;
+  date?: string;
   paid_date?: string;
   amount: number;
-  hsa_eligible: boolean;
-  status: string;
+  hsa_eligible?: boolean;
+  status?: string;
   reimbursement_date?: string;
   drive_file_id?: string;
-  confidence: number;
+  confidence?: number;
   match_type: "exact" | "fuzzy_date";
   days_difference?: number;
   message?: string;
 }
 
-export type DocumentType = "hsa_receipt" | "charitable_receipt";
+export type DocumentType = "receipt" | "hsa_receipt" | "charitable_receipt";
 
 export interface ChatAttachmentInput {
   attachment_id?: string;
@@ -127,7 +147,9 @@ export interface BulkImportFileResult {
   filename: string;
   status: "new" | "duplicate_exact" | "duplicate_fuzzy" | "flagged" | "failed" | "skipped";
   temp_file_path?: string;
+  category?: ExpenseCategory;
   expense?: ExpenseSchema;
+  charitable_data?: CharitableDonationSchema;
   confidence: number;
   duplicate_info?: DuplicateInfo[];
   error?: string;
@@ -178,7 +200,9 @@ export interface BulkImportConfirmRequest {
 
 export interface BulkImportConfirmItem {
   temp_file_path: string;
-  expense_data: ExpenseSchema;
+  category: ExpenseCategory;
+  expense_data?: ExpenseSchema;
+  charitable_data?: CharitableDonationSchema;
   status?: ReimbursementStatus;
 }
 
@@ -194,6 +218,38 @@ export interface BulkImportConfirmResponse {
 export interface UnreimbursedBalanceResponse {
   total_amount: number;
   count: number;
+}
+
+// Charitable donation types
+export interface CharitableSummaryResponse {
+  success: boolean;
+  data?: {
+    tax_year: string | null;
+    total: number;
+    tax_deductible_total: number;
+    by_organization: Record<string, { total: number; count: number }>;
+    by_year: Record<string, { total: number; count: number }>;
+  };
+  error?: string;
+}
+
+export interface LedgerSummaryResponse {
+  success: boolean;
+  year?: number;
+  status_filter?: string;
+  summary: {
+    total_entries: number;
+    total_amount: number;
+    total_reimbursed: number;
+    total_unreimbursed: number;
+    total_not_eligible: number;
+    count_reimbursed: number;
+    count_unreimbursed: number;
+    count_not_eligible: number;
+    available_to_reimburse: number;
+  };
+  entries: Array<Record<string, unknown>>;
+  error?: string;
 }
 
 // WebSocket message types matching backend protocol
@@ -346,6 +402,14 @@ export interface ModelSelectResponse {
 }
 
 // MCP server configuration types
+export interface MCPServerSettingsSchema {
+  key: string;
+  label: string;
+  type: "string" | "number" | "boolean" | "folder_id" | "spreadsheet_id" | "text";
+  required: boolean;
+  default?: string | number | boolean;
+}
+
 export interface MCPServerInfo {
   id: string;
   name: string;
@@ -354,11 +418,22 @@ export interface MCPServerInfo {
   default_enabled: boolean;
   enabled: boolean;
   source: "builtin" | "custom" | string;
+  requires_connection: string | null;  // e.g., "google"
+  settings_schema: MCPServerSettingsSchema[] | null;
+  settings: Record<string, unknown> | null;
+  editable: boolean;  // whether current user can edit settings
 }
 
 export interface MCPServersResponse {
   servers: MCPServerInfo[];
   enabled_server_ids: string[];
+}
+
+export interface MCPServerSettingsResponse {
+  mcp_server_id: string;
+  settings: Record<string, unknown>;
+  settings_schema: MCPServerSettingsSchema[];
+  editable: boolean;
 }
 
 export interface MCPEnabledUpdateResponse {
@@ -370,6 +445,16 @@ export interface MCPTestAddResponse {
   a: number;
   b: number;
   sum: number;
+}
+
+// Google integration status types
+export interface GoogleIntegrationStatus {
+  connected: boolean;
+  provider_email: string | null;
+  connected_by: string | null;
+  connected_at: string | null;
+  scopes: string[] | null;
+  message: string;
 }
 
 // Chat history types

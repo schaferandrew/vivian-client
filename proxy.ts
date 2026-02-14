@@ -26,7 +26,9 @@ export function proxy(request: NextRequest) {
   const isAuthenticated = hasAccessToken || hasRefreshToken;
 
   if (!isAuthenticated && pathname.startsWith("/api/agent")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // For API calls from the client, let them through and the client will handle 401
+    // by redirecting to signin via authenticatedFetch
+    return NextResponse.next();
   }
 
   if (!isAuthenticated && !isPublicPath(pathname)) {

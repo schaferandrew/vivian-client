@@ -84,6 +84,8 @@ interface ChatState {
   sidebarCollapsed: boolean;
   webSearchEnabled: boolean;
   mcpServers: MCPServerInfo[];
+  /** Workflow IDs that have been successfully saved (persisted as array). */
+  completedWorkflowIds: string[];
 
   addMessage: (message: ChatMessage) => void;
   setLoading: (loading: boolean) => void;
@@ -93,6 +95,8 @@ interface ChatState {
   setMcpServerEnabled: (serverId: string, enabled: boolean) => void;
   setSessionId: (sessionId: string | null) => void;
   toggleSidebar: () => void;
+  markWorkflowCompleted: (workflowId: string) => void;
+  isWorkflowCompleted: (workflowId: string) => boolean;
 
   fetchChats: () => Promise<void>;
   fetchMcpServers: () => Promise<void>;
@@ -112,6 +116,7 @@ export const useChatStore = create<ChatState>()(
       sidebarCollapsed: false,
       webSearchEnabled: false,
       mcpServers: [],
+      completedWorkflowIds: [],
 
       addMessage: (message) =>
         set((state) => ({
@@ -135,6 +140,15 @@ export const useChatStore = create<ChatState>()(
 
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+      markWorkflowCompleted: (workflowId) =>
+        set((state) => {
+          if (state.completedWorkflowIds.includes(workflowId)) return state;
+          return { completedWorkflowIds: [...state.completedWorkflowIds, workflowId] };
+        }),
+
+      isWorkflowCompleted: (workflowId) =>
+        get().completedWorkflowIds.includes(workflowId),
 
       fetchChats: async () => {
         try {
@@ -226,6 +240,7 @@ export const useChatStore = create<ChatState>()(
         mcpServers: state.mcpServers,
         sidebarCollapsed: state.sidebarCollapsed,
         currentChatId: state.currentChatId,
+        completedWorkflowIds: state.completedWorkflowIds,
       }),
     }
   )

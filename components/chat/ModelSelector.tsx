@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useModelStore } from "@/lib/stores/model";
+import { useChatStore } from "@/lib/stores/chat";
 import { Check, ChevronDown, AlertCircle, Loader2, Brain, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RefreshButton } from "@/components/ui/refresh-button";
 
 export function ModelSelector() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,6 +23,7 @@ export function ModelSelector() {
     setCreditsError,
     getCurrentModelName,
   } = useModelStore();
+  const webSearchEnabled = useChatStore((state) => state.webSearchEnabled);
 
   useEffect(() => {
     fetchModels();
@@ -71,10 +74,11 @@ export function ModelSelector() {
             onClick={() => setIsOpen(false)}
           />
           <div className="absolute right-0 top-full mt-2 w-72 bg-popover rounded-lg shadow-lg border border-border z-50 overflow-hidden">
-            <div className="px-3 py-2 border-b border-border">
+            <div className="px-3 py-2 border-b border-border flex items-center justify-between">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Select Model
               </h3>
+              <RefreshButton onRefresh={fetchModels} title="Refresh models" />
             </div>
 
             {showSuccess && (
@@ -143,16 +147,23 @@ export function ModelSelector() {
                         )}
                     </div>
                     {providerModels.map((model) => {
+                      const isOllamaModel = model.provider === "Ollama";
+                      const isWebSearchBlocked = webSearchEnabled && isOllamaModel;
                       const isSelected = currentModel === model.id;
                       const isSelecting = selectingId === model.id;
+                      const isDisabled = !model.selectable || selectingId !== null || isWebSearchBlocked;
+                      const tooltip = isWebSearchBlocked
+                        ? "Web search is enabled. Ollama models don't support web search."
+                        : undefined;
                       return (
                         <button
                           key={model.id}
                           onClick={() => handleSelect(model.id)}
-                          disabled={!model.selectable || selectingId !== null}
+                          disabled={isDisabled}
+                          title={tooltip}
                           className={cn(
                             "w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-secondary transition-colors",
-                            !model.selectable && "opacity-50 cursor-not-allowed",
+                            isDisabled && "opacity-50 cursor-not-allowed",
                             selectingId !== null && selectingId !== model.id && "opacity-60",
                             isSelected && "bg-[var(--primary-100)]"
                           )}
@@ -167,6 +178,11 @@ export function ModelSelector() {
                             {!model.selectable && (
                               <span className="text-[10px] px-1 py-0.5 bg-[var(--brand-100)] text-[var(--brand-800)] rounded">
                                 Offline
+                              </span>
+                            )}
+                            {isWebSearchBlocked && (
+                              <span className="text-[10px] px-1 py-0.5 bg-[var(--warning-100)] text-[var(--warning-800)] rounded">
+                                Web search on
                               </span>
                             )}
                           </div>

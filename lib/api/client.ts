@@ -3,6 +3,7 @@ import type {
   BulkImportConfirmItem,
   BulkImportConfirmResponse,
   BulkImportResponse,
+  CharitableDonationSchema,
   Chat,
   ChatAttachmentInput,
   ChatListResponse,
@@ -50,6 +51,18 @@ function getMessageFromPayload(payload: unknown): string | null {
   return typeof candidate === "string" ? candidate : null;
 }
 
+function getErrorCodeFromPayload(payload: unknown): string | null {
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  const candidate = [payload.code, payload.error_code, payload.error].find(
+    (value) => typeof value === "string" && value
+  );
+
+  return typeof candidate === "string" ? candidate : null;
+}
+
 async function parseResponsePayload(response: Response): Promise<unknown> {
   if (response.status === 204 || response.status === 205) {
     return null;
@@ -65,11 +78,27 @@ async function parseResponsePayload(response: Response): Promise<unknown> {
 }
 
 function buildApiError(response: Response, payload: unknown): ApiError {
-  const message =
-    getMessageFromPayload(payload) ?? `API Error: ${response.status} ${response.statusText}`;
+  const errorCode = getErrorCodeFromPayload(payload);
+  const rawMessage = getMessageFromPayload(payload);
+  const defaultMessage = `API Error: ${response.status} ${response.statusText}`;
+  let message = rawMessage ?? defaultMessage;
+
+  if (message === "server_error" || errorCode === "server_error") {
+    message = response.status >= 500
+      ? "Server error. Please try again."
+      : "Request failed. Please try again.";
+  }
+
+  if (response.status === 502 && message === defaultMessage) {
+    message = "Backend unavailable. Please try again shortly.";
+  }
+
   const error = new Error(message) as ApiError;
   error.status = response.status;
   error.data = payload;
+  if (errorCode) {
+    error.code = errorCode;
+  }
   return error;
 }
 
@@ -195,6 +224,24 @@ export async function sendChatMessage(
       throw enriched;
     }
 
+    if (apiError.status === 504 && payload.error === "ollama_timeout") {
+      const msg =
+        (typeof payload.message === "string" && payload.message) ||
+        "Ollama timed out. The model may still be loading — try again in a moment.";
+      const enriched = new Error(msg) as ApiError;
+      enriched.code = "ollama_timeout";
+      throw enriched;
+    }
+
+    if (apiError.status === 502 && payload.error === "ollama_unavailable") {
+      const msg =
+        (typeof payload.message === "string" && payload.message) ||
+        "Could not connect to Ollama. Is it running?";
+      const enriched = new Error(msg) as ApiError;
+      enriched.code = "ollama_unavailable";
+      throw enriched;
+    }
+
     throw error;
   }
 }
@@ -226,6 +273,19 @@ export async function checkReceiptDuplicate(
     method: "POST",
     body: JSON.stringify({
       expense_data: expenseData,
+      fuzzy_days: fuzzyDays,
+    }),
+  });
+}
+
+export async function checkCharitableDuplicate(
+  charitableData: CharitableDonationSchema,
+  fuzzyDays: number = 3
+): Promise<CheckDuplicateResponse> {
+  return fetchDirectApi("/receipts/check-charitable-duplicate", {
+    method: "POST",
+    body: JSON.stringify({
+      charitable_data: charitableData,
       fuzzy_days: fuzzyDays,
     }),
   });
@@ -377,5 +437,47 @@ export async function bulkImportConfirm(
       status_override: statusOverride,
       force,
     }),
+  });
+}
+
+// MCP Server Settings API
+export async function getMcpServerSettings(
+  serverId: string
+): Promise<import("@/types").MCPServerSettingsResponse> {
+  return fetchProxyApi(`/mcp/servers/${serverId}/settings`, {
+    method: "GET",
+  });
+}
+
+export async function updateMcpServerSettings(
+  serverId: string,
+  settings: Record<string, unknown>
+): Promise<{ mcp_server_id: string; settings: Record<string, unknown> }> {
+  return fetchProxyApi(`/mcp/servers/${serverId}/settings`, {
+    method: "PUT",
+    body: JSON.stringify({ settings }),
+  });
+}
+
+// Charitable donation API
+export async function getCharitableSummary(
+  taxYear?: string
+): Promise<import("@/types").CharitableSummaryResponse> {
+  const params = taxYear ? `?year=${taxYear}` : "";
+  return fetchDirectApi(`/ledger/charitable/summary${params}`, {
+    method: "GET",
+  });
+}
+
+export async function getLedgerSummary(
+  year?: number,
+  statusFilter?: string
+): Promise<import("@/types").LedgerSummaryResponse> {
+  const params = new URLSearchParams();
+  if (year) params.set("year", year.toString());
+  if (statusFilter) params.set("status_filter", statusFilter);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return fetchDirectApi(`/ledger/summary${query}`, {
+    method: "GET",
   });
 }
