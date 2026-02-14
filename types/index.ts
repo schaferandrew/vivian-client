@@ -218,7 +218,6 @@ export interface BulkImportConfirmResponse {
 export interface UnreimbursedBalanceResponse {
   total_amount: number;
   count: number;
-  is_configured?: boolean;  // Whether MCP server is properly configured
 }
 
 // Charitable donation types

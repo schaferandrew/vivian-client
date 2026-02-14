@@ -71,7 +71,7 @@ async function fetchWithErrorHandling(
   }
 }
 
-export async function getUnreimbursedBalanceServer(): Promise<UnreimbursedBalanceResponse> {
+export async function getUnreimbursedBalanceServer(): Promise<UnreimbursedBalanceResponse | null> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
 
@@ -90,9 +90,14 @@ export async function getUnreimbursedBalanceServer(): Promise<UnreimbursedBalanc
   );
 
   const payload = await response.json().catch(() => null);
-  
+
   if (!response.ok) {
     throw createApiError(response.status, response.statusText, payload);
+  }
+
+  // If API returns is_configured: false or null payload, return null
+  if (!payload || payload.is_configured === false) {
+    return null;
   }
 
   return payload as UnreimbursedBalanceResponse;

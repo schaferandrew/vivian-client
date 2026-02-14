@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Heart, Sparkles, Rainbow, ChartPie } from "lucide-react";
 import { getCharitableSummaryServer } from "@/lib/api/server";
 
+// Force dynamic rendering since we use cookies() in getCharitableSummaryServer
+export const dynamic = "force-dynamic";
+
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
 export default async function DonationsPage() {

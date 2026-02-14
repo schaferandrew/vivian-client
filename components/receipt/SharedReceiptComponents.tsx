@@ -64,7 +64,7 @@ export function DuplicateInfoPanel({
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground">Provider:</span> {dup.provider}</div>
                 <div><span className="text-muted-foreground">Amount:</span> ${dup.amount.toFixed(2)}</div>
-                <div><span className="text-muted-foreground">Date:</span> {dup.service_date || "N/A"}</div>
+                <div><span className="text-muted-foreground">Date:</span> {dup.date || "N/A"}</div>
                 <div><span className="text-muted-foreground">Status:</span> {dup.status}</div>
               </div>
               {dup.message && (
