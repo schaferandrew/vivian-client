@@ -82,7 +82,7 @@ export function ModelSelector() {
             </div>
 
             {showSuccess && (
-              <div className="flex items-center gap-2 border-b border-[var(--success-100)] bg-[var(--success-50)] px-3 py-2 text-xs text-[var(--success-700)] dark:border-[var(--success-800)] dark:bg-[var(--success-900)]/25 dark:text-[var(--success-200)]">
+              <div className="flex items-center gap-2 border-b border-[var(--success-100)] bg-[var(--success-50)] px-3 py-2 text-xs text-[var(--success-700)] dark:border-[var(--success-800)] dark:bg-[var(--success-950)] dark:text-[var(--success-200)]">
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 Model updated successfully
               </div>
