@@ -2,8 +2,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { McpClient } from "./mcp-client";
+import { mcpServersResponseSchema } from "@/lib/schemas/mcp";
 import { SettingsSkeleton } from "../components/settings-skeleton";
 import { SettingsError } from "../components/settings-error";
+import type { MCPServerInfo } from "@/types";
 
 interface GoogleIntegrationStatus {
   connected: boolean;
@@ -12,28 +14,6 @@ interface GoogleIntegrationStatus {
   connected_by?: string;
   connected_at?: string;
   scopes?: string[];
-}
-
-interface MCPServerSettingsSchema {
-  key: string;
-  label: string;
-  type: "string" | "number" | "boolean" | "folder_id" | "spreadsheet_id" | "text";
-  required: boolean;
-  default?: string | number | boolean;
-}
-
-interface MCPServerInfo {
-  id: string;
-  name: string;
-  description: string;
-  tools: string[];
-  default_enabled: boolean;
-  enabled: boolean;
-  source: "builtin" | "custom" | string;
-  requires_connection: string | null;
-  settings_schema: MCPServerSettingsSchema[] | null;
-  settings: Record<string, unknown> | null;
-  editable: boolean;
 }
 
 async function fetchGoogleStatus(): Promise<GoogleIntegrationStatus | null> {
@@ -75,8 +55,9 @@ async function fetchMcpServers(): Promise<MCPServerInfo[]> {
     throw new Error("Failed to load MCP servers");
   }
 
-  const data = await response.json();
-  return data.servers || [];
+  const payload = await response.json();
+  const parsed = mcpServersResponseSchema.parse(payload);
+  return parsed.servers;
 }
 
 async function McpContent() {

@@ -5,7 +5,7 @@ import { CheckCircle2, Globe, Loader2, Paperclip, Plus, Send, X } from "lucide-r
 
 import { useChatStore } from "@/lib/stores/chat";
 import { useModelStore } from "@/lib/stores/model";
-import { sendChatMessage, updateEnabledMcpServers, uploadReceipt } from "@/lib/api/client";
+import { sendChatMessage, uploadReceipt } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { ChatAttachmentInput } from "@/types";
@@ -153,7 +153,7 @@ export function ChatInput() {
       }
 
       const { sessionId, currentChatId } = useChatStore.getState();
-      const enabledMcpServers = enabledMcpServerIds;
+      const enabledMcpServers = mcpServers.length > 0 ? enabledMcpServerIds : undefined;
       const response = await sendChatMessage(
         baseUserMessage,
         sessionId,

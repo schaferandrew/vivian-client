@@ -402,12 +402,33 @@ export interface ModelSelectResponse {
 }
 
 // MCP server configuration types
+export type MCPColumnFilterOperator =
+  | "equals"
+  | "not_equals"
+  | "contains"
+  | "starts_with"
+  | "ends_with"
+  | "in"
+  | "gt"
+  | "gte"
+  | "lt"
+  | "lte";
+
+export type MCPColumnFilterValue = string | number | boolean;
+
+export interface MCPColumnFilter {
+  column: string;
+  operator?: MCPColumnFilterOperator;
+  value: MCPColumnFilterValue | MCPColumnFilterValue[];
+  case_sensitive?: boolean;
+}
+
 export interface MCPServerSettingsSchema {
   key: string;
   label: string;
   type: "string" | "number" | "boolean" | "folder_id" | "spreadsheet_id" | "text";
   required: boolean;
-  default?: string | number | boolean;
+  default?: string | number | boolean | null;
 }
 
 export interface MCPServerInfo {

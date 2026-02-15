@@ -1,34 +1,13 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronRight, Settings2 } from "lucide-react";
 import { useChatStore } from "@/lib/stores/chat";
-
-interface MCPServerSettingsSchema {
-  key: string;
-  label: string;
-  type: "string" | "number" | "boolean" | "folder_id" | "spreadsheet_id" | "text";
-  required: boolean;
-  default?: string | number | boolean;
-}
-
-interface MCPServerInfo {
-  id: string;
-  name: string;
-  description: string;
-  tools: string[];
-  default_enabled: boolean;
-  enabled: boolean;
-  source: "builtin" | "custom" | string;
-  requires_connection: string | null;
-  settings_schema: MCPServerSettingsSchema[] | null;
-  settings: Record<string, unknown> | null;
-  editable: boolean;
-}
+import type { MCPServerInfo, MCPServerSettingsSchema } from "@/types";
 
 interface McpClientProps {
   initialServers: MCPServerInfo[];
@@ -36,7 +15,7 @@ interface McpClientProps {
 }
 
 export function McpClient({ initialServers, googleConnected }: McpClientProps) {
-  const { mcpServers, setMcpServers, setMcpServerEnabled, fetchMcpServers } = useChatStore();
+  const { mcpServers, setMcpServers, setMcpServerEnabled } = useChatStore();
   
   // Initialize store with server data
   useEffect(() => {

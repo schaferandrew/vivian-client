@@ -1,4 +1,10 @@
 import { authenticatedFetch } from "@/lib/auth/client";
+import {
+  mcpEnabledUpdateResponseSchema,
+  mcpServerSettingsResponseSchema,
+  mcpServerSettingsUpdateResponseSchema,
+  mcpServersResponseSchema,
+} from "@/lib/schemas/mcp";
 import type {
   BulkImportConfirmItem,
   BulkImportConfirmResponse,
@@ -174,7 +180,7 @@ export async function sendChatMessage(
   sessionId: string | null,
   chatId: string | null,
   webSearchEnabled: boolean = false,
-  enabledMcpServers: string[] = [],
+  enabledMcpServers?: string[],
   attachments: ChatAttachmentInput[] = []
 ): Promise<ChatMessageResponse> {
   try {
@@ -183,8 +189,10 @@ export async function sendChatMessage(
       session_id: sessionId,
       chat_id: chatId,
       web_search_enabled: webSearchEnabled,
-      enabled_mcp_servers: enabledMcpServers,
     };
+    if (enabledMcpServers !== undefined) {
+      payload.enabled_mcp_servers = enabledMcpServers;
+    }
     if (attachments.length > 0) {
       payload.attachments = attachments;
     }
@@ -359,16 +367,18 @@ export async function generateSummary(chatId: string): Promise<GenerateSummaryRe
 }
 
 export async function getMcpServers(): Promise<MCPServersResponse> {
-  return fetchProxyApi("/mcp/servers");
+  const payload = await fetchProxyApi<unknown>("/mcp/servers");
+  return mcpServersResponseSchema.parse(payload);
 }
 
 export async function updateEnabledMcpServers(
   enabledServerIds: string[]
 ): Promise<MCPEnabledUpdateResponse> {
-  return fetchProxyApi("/mcp/servers", {
+  const payload = await fetchProxyApi<unknown>("/mcp/servers", {
     method: "POST",
     body: JSON.stringify({ enabled_server_ids: enabledServerIds }),
   });
+  return mcpEnabledUpdateResponseSchema.parse(payload);
 }
 
 export async function runMcpAdditionTest(
@@ -444,19 +454,21 @@ export async function bulkImportConfirm(
 export async function getMcpServerSettings(
   serverId: string
 ): Promise<import("@/types").MCPServerSettingsResponse> {
-  return fetchProxyApi(`/mcp/servers/${serverId}/settings`, {
+  const payload = await fetchProxyApi<unknown>(`/mcp/servers/${serverId}/settings`, {
     method: "GET",
   });
+  return mcpServerSettingsResponseSchema.parse(payload);
 }
 
 export async function updateMcpServerSettings(
   serverId: string,
   settings: Record<string, unknown>
 ): Promise<{ mcp_server_id: string; settings: Record<string, unknown> }> {
-  return fetchProxyApi(`/mcp/servers/${serverId}/settings`, {
-    method: "PUT",
+  const payload = await fetchProxyApi<unknown>(`/mcp/servers/${serverId}/settings`, {
+    method: "PATCH",
     body: JSON.stringify({ settings }),
   });
+  return mcpServerSettingsUpdateResponseSchema.parse(payload);
 }
 
 // Charitable donation API
