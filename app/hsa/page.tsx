@@ -36,7 +36,7 @@ export default async function HSAPage() {
 
       <main className="max-w-5xl mx-auto px-4 py-8">
         {!isConfigured && (
-          <Card className="mb-6 border-[var(--warning-200)] bg-[var(--warning-50)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20">
+          <Card className="mb-6 border-[var(--warning-200)] bg-[var(--warning-50)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]">
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="space-y-2">
