@@ -341,9 +341,10 @@ export function McpClient({ initialServers, googleConnected }: McpClientProps) {
                               <Button
                                 size="sm"
                                 onClick={() => handleSaveSettings(server.id)}
-                                disabled={isSettingsSaving}
+                                loading={isSettingsSaving}
+                                loadingText="Saving..."
                               >
-                                {isSettingsSaving ? "Saving..." : "Save Settings"}
+                                Save Settings
                               </Button>
                               {settingsSuccess[server.id] && (
                                 <span className="text-sm text-[var(--success-600)]">
@@ -394,9 +395,10 @@ export function McpClient({ initialServers, googleConnected }: McpClientProps) {
                       <div className="flex items-center gap-2">
                         <Button
                           onClick={() => handleRunTest(server.id)}
-                          disabled={testLoading === server.id}
+                          loading={testLoading === server.id}
+                          loadingText="Running..."
                         >
-                          {testLoading === server.id ? "Running..." : "Run test"}
+                          Run test
                         </Button>
                         {testResults[server.id] && (
                           <span className="text-sm text-[var(--success-600)]">

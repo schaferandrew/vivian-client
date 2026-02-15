@@ -100,8 +100,13 @@ export function LoginForm() {
 
           <FieldErrorText id="login-server-error" message={errors.root?.serverError?.message} />
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Signing in..." : "Sign In"}
+          <Button
+            type="submit"
+            className="w-full"
+            loading={isSubmitting}
+            loadingText="Signing in..."
+          >
+            Sign In
           </Button>
         </form>
       </CardContent>

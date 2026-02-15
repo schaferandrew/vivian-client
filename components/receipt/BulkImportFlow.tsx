@@ -783,18 +783,14 @@ function ConfirmStep() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <Button onClick={handleImport} disabled={isImporting || (selectedDuplicateCount > 0 && !forceImport)}>
-          {isImporting ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Importing...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Import to Drive & Ledger
-            </>
-          )}
+        <Button
+          onClick={handleImport}
+          disabled={selectedDuplicateCount > 0 && !forceImport}
+          loading={isImporting}
+          loadingText="Importing..."
+        >
+          <Save className="w-4 h-4 mr-2" />
+          Import to Drive & Ledger
         </Button>
       </div>
     </div>

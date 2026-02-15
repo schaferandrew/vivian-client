@@ -105,11 +105,12 @@ function SingleUploadStep() {
         />
         <Button
           variant="outline"
-          disabled={isUploading}
+          loading={isUploading}
+          loadingText="Uploading..."
           type="button"
           onClick={() => fileInputRef.current?.click()}
         >
-          {isUploading ? "Uploading..." : "Select File"}
+          Select File
         </Button>
       </div>
     </div>
@@ -178,8 +179,8 @@ function ReviewStep() {
   if (!parsedData) {
     return (
       <div className="text-center py-8">
-        <Button onClick={handleParse} disabled={isParsing}>
-          {isParsing ? "Parsing..." : "Parse Receipt"}
+        <Button onClick={handleParse} loading={isParsing} loadingText="Parsing...">
+          Parse Receipt
         </Button>
       </div>
     );
@@ -291,12 +292,12 @@ function ReviewStep() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <Button onClick={handleContinue} disabled={isCheckingDuplicates}>
-          {isCheckingDuplicates
-            ? "Checking duplicates..."
-            : hasCoreFieldChanges
-            ? "Continue (Re-check Duplicates)"
-            : "Continue"}
+        <Button
+          onClick={handleContinue}
+          loading={isCheckingDuplicates}
+          loadingText="Checking duplicates..."
+        >
+          {hasCoreFieldChanges ? "Continue (Re-check Duplicates)" : "Continue"}
         </Button>
       </div>
 
@@ -438,8 +439,13 @@ function ConfirmStep() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <Button onClick={handleConfirm} disabled={isSubmitting || (duplicateInfo !== null && !forceImport)}>
-          {isSubmitting ? "Saving..." : duplicateInfo ? "Import Anyway" : "Confirm & Save"}
+        <Button
+          onClick={handleConfirm}
+          disabled={duplicateInfo !== null && !forceImport}
+          loading={isSubmitting}
+          loadingText="Saving..."
+        >
+          {duplicateInfo ? "Import Anyway" : "Confirm & Save"}
         </Button>
       </div>
 
