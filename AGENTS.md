@@ -29,3 +29,10 @@ All new or updated UI must support both light and dark mode.
 
 - Before closing work, ensure local branch changes are committed and pushed to `origin`.
 - If a PR exists for the branch, push updates so the PR reflects the latest state.
+
+## Git Workflow Rule (Required)
+
+- NEVER force push (`git push --force` or `git push -f`).
+- Always create a feature branch for changes (e.g., `fix/...`, `feat/...`).
+- Use proper workflow: `git checkout -b <branch>`, make changes, `git add`, `git commit`, `git push -u origin <branch>`, then create a PR via `gh pr create`.
+- Only push directly to `main` if explicitly requested by the user.
