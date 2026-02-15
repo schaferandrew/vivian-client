@@ -50,17 +50,20 @@ export function DuplicateInfoPanel({
   onForceImportChange?: (value: boolean) => void;
 }) {
   return (
-    <div className="p-4 bg-[var(--warning-50)] border border-[var(--warning-200)] rounded-lg space-y-3">
-      <div className="flex items-center gap-2 text-[var(--warning-800)] font-medium">
+    <div className="space-y-3 rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-4 dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20">
+      <div className="flex items-center gap-2 font-medium text-[var(--warning-800)] dark:text-[var(--warning-200)]">
         <AlertCircle className="w-5 h-5" />
         <span>{title}</span>
       </div>
-      <p className="text-sm text-[var(--warning-700)]">{description}</p>
+      <p className="text-sm text-[var(--warning-700)] dark:text-[var(--warning-300)]">{description}</p>
 
       {duplicateInfo.length > 0 ? (
         <div className="space-y-2">
           {duplicateInfo.map((dup, idx) => (
-            <div key={idx} className="p-3 bg-white rounded border border-[var(--warning-200)] text-sm">
+            <div
+              key={idx}
+              className="rounded border border-[var(--warning-200)] bg-background p-3 text-sm dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/30"
+            >
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground">Provider:</span> {dup.provider}</div>
                 <div><span className="text-muted-foreground">Amount:</span> ${dup.amount.toFixed(2)}</div>
@@ -68,14 +71,14 @@ export function DuplicateInfoPanel({
                 <div><span className="text-muted-foreground">Status:</span> {dup.status}</div>
               </div>
               {dup.message && (
-                <div className="mt-1 text-sm text-[var(--warning-700)]">{dup.message}</div>
+                <div className="mt-1 text-sm text-[var(--warning-700)] dark:text-[var(--warning-300)]">{dup.message}</div>
               )}
               <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-[var(--warning-700)]">
+        <p className="text-sm text-[var(--warning-700)] dark:text-[var(--warning-300)]">
           Duplicate was detected but exact matching rows were not returned.
         </p>
       )}
@@ -87,7 +90,7 @@ export function DuplicateInfoPanel({
             checked={forceImport}
             onChange={(e) => onForceImportChange(e.target.checked)}
           />
-          <span className="text-[var(--warning-800)]">I understand - import anyway</span>
+          <span className="text-[var(--warning-800)] dark:text-[var(--warning-200)]">I understand - import anyway</span>
         </label>
       )}
     </div>
@@ -238,8 +241,8 @@ export function SuccessState({
 }) {
   if (compact) {
     return (
-      <div className="rounded-lg border border-[var(--success-200)] bg-[var(--success-50)] p-3">
-        <div className="flex items-center gap-2 text-[var(--success-700)] text-sm font-medium">
+      <div className="rounded-lg border border-[var(--success-200)] bg-[var(--success-50)] p-3 dark:border-[var(--success-800)] dark:bg-[var(--success-900)]/20">
+        <div className="flex items-center gap-2 text-sm font-medium text-[var(--success-700)] dark:text-[var(--success-300)]">
           <CheckCircle className="h-4 w-4" />
           <span>{title || "Receipt saved successfully."}</span>
         </div>

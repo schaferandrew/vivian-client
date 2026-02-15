@@ -162,10 +162,10 @@ function DuplicateDetailPanel({ duplicates }: { duplicates: DuplicateInfo[] }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+    <div className="mt-2 rounded-md border border-[var(--warning-200)] bg-[var(--warning-50)] p-3 dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 text-sm font-medium text-amber-800 w-full"
+        className="flex w-full items-center gap-2 text-sm font-medium text-[var(--warning-800)] dark:text-[var(--warning-200)]"
       >
         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         <AlertTriangle className="w-4 h-4" />
@@ -175,7 +175,10 @@ function DuplicateDetailPanel({ duplicates }: { duplicates: DuplicateInfo[] }) {
       {expanded && (
         <div className="mt-3 space-y-3">
           {duplicates.map((dup, idx) => (
-            <div key={idx} className="p-2 bg-white rounded border border-amber-200 text-sm">
+            <div
+              key={idx}
+              className="rounded border border-[var(--warning-200)] bg-background p-2 text-sm dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/30"
+            >
               <div className="grid grid-cols-2 gap-2">
                 {dup.provider && (
                   <div>
@@ -195,12 +198,12 @@ function DuplicateDetailPanel({ duplicates }: { duplicates: DuplicateInfo[] }) {
                 )}
               </div>
               {dup.days_difference !== undefined && dup.days_difference !== null && (
-                <div className="mt-1 text-amber-700">
+                <div className="mt-1 text-[var(--warning-700)] dark:text-[var(--warning-300)]">
                   {dup.days_difference} day{dup.days_difference !== 1 ? "s" : ""} difference
                 </div>
               )}
               {dup.message && (
-                <div className="mt-1 text-amber-700">{dup.message}</div>
+                <div className="mt-1 text-[var(--warning-700)] dark:text-[var(--warning-300)]">{dup.message}</div>
               )}
               {dup.entry_id && (
                 <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
@@ -241,12 +244,36 @@ function ReceiptRow({
   const isCharitable = result.category === "charitable";
 
   const badge = {
-    new: <Badge className="bg-green-100 text-green-800">New</Badge>,
-    duplicate_exact: <Badge className="bg-amber-100 text-amber-800">Duplicate (Exact)</Badge>,
-    duplicate_fuzzy: <Badge className="bg-orange-100 text-orange-800">Duplicate (Fuzzy)</Badge>,
-    flagged: <Badge className="bg-yellow-100 text-yellow-800">Flagged</Badge>,
-    failed: <Badge className="bg-red-100 text-red-800">Failed</Badge>,
-    skipped: <Badge className="bg-gray-100 text-gray-800">Skipped</Badge>,
+    new: (
+      <Badge className="bg-[var(--success-100)] text-[var(--success-800)] dark:bg-[var(--success-900)] dark:text-[var(--success-100)]">
+        New
+      </Badge>
+    ),
+    duplicate_exact: (
+      <Badge className="bg-[var(--warning-100)] text-[var(--warning-800)] dark:bg-[var(--warning-900)] dark:text-[var(--warning-100)]">
+        Duplicate (Exact)
+      </Badge>
+    ),
+    duplicate_fuzzy: (
+      <Badge className="bg-[var(--brand-100)] text-[var(--brand-800)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-100)]">
+        Duplicate (Fuzzy)
+      </Badge>
+    ),
+    flagged: (
+      <Badge className="bg-[var(--warning-100)] text-[var(--warning-800)] dark:bg-[var(--warning-900)] dark:text-[var(--warning-100)]">
+        Flagged
+      </Badge>
+    ),
+    failed: (
+      <Badge className="bg-[var(--error-100)] text-[var(--error-800)] dark:bg-[var(--error-900)] dark:text-[var(--error-100)]">
+        Failed
+      </Badge>
+    ),
+    skipped: (
+      <Badge className="bg-[var(--neutral-100)] text-[var(--neutral-800)] dark:bg-[var(--neutral-800)] dark:text-[var(--neutral-100)]">
+        Skipped
+      </Badge>
+    ),
   }[result.status];
 
   const categoryBadge = onCategoryChange ? (
@@ -259,9 +286,9 @@ function ReceiptRow({
       <option value="charitable">Charitable</option>
     </select>
   ) : isCharitable ? (
-    <Badge className="bg-purple-100 text-purple-800">Charitable</Badge>
+    <Badge className="bg-[var(--brand-100)] text-[var(--brand-800)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-100)]">Charitable</Badge>
   ) : (
-    <Badge className="bg-blue-100 text-blue-800">HSA</Badge>
+    <Badge className="bg-[var(--primary-100)] text-[var(--primary-800)] dark:bg-[var(--primary-900)] dark:text-[var(--primary-100)]">HSA</Badge>
   );
 
   return (
@@ -304,14 +331,14 @@ function ReceiptRow({
           )}
 
           {result.warnings && result.warnings.length > 0 && (
-            <div className="mt-2 flex items-center gap-1 text-sm text-yellow-700">
+            <div className="mt-2 flex items-center gap-1 text-sm text-[var(--warning-700)] dark:text-[var(--warning-300)]">
               <AlertTriangle className="w-4 h-4" />
               {result.warnings.join(", ")}
             </div>
           )}
 
           {result.error && (
-            <div className="mt-2 flex items-center gap-1 text-sm text-red-600">
+            <div className="mt-2 flex items-center gap-1 text-sm text-[var(--error-600)] dark:text-[var(--error-400)]">
               <X className="w-4 h-4" />
               {result.error}
             </div>
@@ -404,19 +431,19 @@ function ReviewStep() {
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{summary.new_count}</div>
+            <div className="text-2xl font-bold text-[var(--success-600)] dark:text-[var(--success-300)]">{summary.new_count}</div>
             <div className="text-sm text-muted-foreground">New</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-amber-600">{summary.duplicate_count}</div>
+            <div className="text-2xl font-bold text-[var(--warning-600)] dark:text-[var(--warning-300)]">{summary.duplicate_count}</div>
             <div className="text-sm text-muted-foreground">Duplicates</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-600">{summary.flagged_count}</div>
+            <div className="text-2xl font-bold text-[var(--warning-600)] dark:text-[var(--warning-300)]">{summary.flagged_count}</div>
             <div className="text-sm text-muted-foreground">Flagged</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">{summary.failed_count}</div>
+            <div className="text-2xl font-bold text-[var(--error-600)] dark:text-[var(--error-400)]">{summary.failed_count}</div>
             <div className="text-sm text-muted-foreground">Failed</div>
           </div>
         </div>
@@ -446,7 +473,7 @@ function ReviewStep() {
         <div className="text-sm text-muted-foreground">{selectedIds.size} selected</div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-[var(--warning-700)] bg-[var(--warning-50)] border border-[var(--warning-200)] rounded-md px-3 py-2">
+      <label className="flex items-center gap-2 rounded-md border border-[var(--warning-200)] bg-[var(--warning-50)] px-3 py-2 text-sm text-[var(--warning-700)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20 dark:text-[var(--warning-300)]">
         <Checkbox
           checked={options.forceImportDuplicates}
           onCheckedChange={(checked) => {
@@ -508,7 +535,7 @@ function ReviewStep() {
       <div className="space-y-4 max-h-[500px] overflow-y-auto border rounded-lg">
         {results.new.length > 0 && (
           <div>
-            <div className="px-4 py-2 bg-green-50 border-b border-green-200 font-medium text-green-800">
+            <div className="border-b border-[var(--success-200)] bg-[var(--success-50)] px-4 py-2 font-medium text-[var(--success-800)] dark:border-[var(--success-800)] dark:bg-[var(--success-900)]/20 dark:text-[var(--success-200)]">
               New Receipts ({results.new.length})
             </div>
             {results.new.map((result, idx) => (
@@ -541,7 +568,7 @@ function ReviewStep() {
 
         {results.duplicates.length > 0 && (
           <div>
-            <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 font-medium text-amber-800">
+            <div className="border-b border-[var(--warning-200)] bg-[var(--warning-50)] px-4 py-2 font-medium text-[var(--warning-800)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20 dark:text-[var(--warning-200)]">
               Potential Duplicates ({results.duplicates.length})
             </div>
             {results.duplicates.map((result, idx) => (
@@ -574,7 +601,7 @@ function ReviewStep() {
 
         {results.flagged.length > 0 && (
           <div>
-            <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-200 font-medium text-yellow-800">
+            <div className="border-b border-[var(--warning-200)] bg-[var(--warning-50)] px-4 py-2 font-medium text-[var(--warning-800)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20 dark:text-[var(--warning-200)]">
               Flagged for Review ({results.flagged.length})
             </div>
             {results.flagged.map((result, idx) => (
@@ -607,7 +634,7 @@ function ReviewStep() {
 
         {results.failed.length > 0 && (
           <div>
-            <div className="px-4 py-2 bg-red-50 border-b border-red-200 font-medium text-red-800">
+            <div className="border-b border-[var(--error-200)] bg-[var(--error-50)] px-4 py-2 font-medium text-[var(--error-800)] dark:border-[var(--error-800)] dark:bg-[var(--error-900)]/20 dark:text-[var(--error-200)]">
               Failed ({results.failed.length})
             </div>
             {results.failed.map((result, idx) => (
@@ -711,7 +738,7 @@ function ConfirmStep() {
   return (
     <div className="space-y-6">
       <div className="text-center py-6">
-        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+        <CheckCircle className="mx-auto mb-4 h-12 w-12 text-[var(--success-500)] dark:text-[var(--success-300)]" />
         <h3 className="text-lg font-medium mb-2">Ready to Import</h3>
         <p className="text-muted-foreground">
           You&apos;re about to import {selectedIds.size} receipt{selectedIds.size !== 1 ? "s" : ""}
@@ -720,14 +747,14 @@ function ConfirmStep() {
 
       {selectedDuplicateCount > 0 && (
         <div className="rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-4 space-y-3">
-          <div className="flex items-center gap-2 text-[var(--warning-800)] font-medium">
+          <div className="flex items-center gap-2 font-medium text-[var(--warning-800)] dark:text-[var(--warning-200)]">
             <AlertTriangle className="w-5 h-5" />
             <span>{selectedDuplicateCount} selected duplicate{selectedDuplicateCount !== 1 ? "s" : ""}</span>
           </div>
-          <p className="text-sm text-[var(--warning-700)]">
+          <p className="text-sm text-[var(--warning-700)] dark:text-[var(--warning-300)]">
             These items were flagged as potential duplicates. You can skip them by going back, or override duplicate checks for this import.
           </p>
-          <label className="flex items-center gap-2 text-sm text-[var(--warning-800)]">
+          <label className="flex items-center gap-2 text-sm text-[var(--warning-800)] dark:text-[var(--warning-200)]">
             <Checkbox checked={forceImport} onCheckedChange={(checked) => setForceImport(Boolean(checked))} />
             <span>Import selected duplicates anyway</span>
           </label>
@@ -782,21 +809,21 @@ function ResultsStep() {
     <div className="text-center py-8 space-y-6">
       {importResults.failedCount === 0 ? (
         <>
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+          <CheckCircle className="mx-auto h-16 w-16 text-[var(--success-500)] dark:text-[var(--success-300)]" />
           <h3 className="text-xl font-semibold">Import Successful!</h3>
         </>
       ) : (
         <>
-          <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto" />
+          <AlertCircle className="mx-auto h-16 w-16 text-[var(--warning-500)] dark:text-[var(--warning-300)]" />
           <h3 className="text-xl font-semibold">Import Completed with Issues</h3>
         </>
       )}
 
       <p className="text-muted-foreground">{importResults.message}</p>
       {importResults.failures.length > 0 && (
-        <div className="max-w-2xl mx-auto text-left p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="font-medium text-red-800 mb-2">Failed files</p>
-          <div className="space-y-1 text-sm text-red-700">
+        <div className="mx-auto max-w-2xl rounded-lg border border-[var(--error-200)] bg-[var(--error-50)] p-4 text-left dark:border-[var(--error-800)] dark:bg-[var(--error-900)]/20">
+          <p className="mb-2 font-medium text-[var(--error-800)] dark:text-[var(--error-200)]">Failed files</p>
+          <div className="space-y-1 text-sm text-[var(--error-700)] dark:text-[var(--error-300)]">
             {importResults.failures.map((f, idx) => (
               <div key={`${f.filename}-${idx}`}>
                 <span className="font-medium">{f.filename}:</span> {f.error}

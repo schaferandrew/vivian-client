@@ -242,7 +242,7 @@ export function ChatInput() {
         <div
           className={`border rounded-2xl bg-card transition-colors ${
             isDragActive
-              ? "border-[var(--primary-500)] bg-[var(--primary-50)]"
+              ? "border-[var(--primary-500)] bg-[var(--primary-50)] dark:bg-[var(--primary-900)]/25"
               : "border-border"
           }`}
           onDragOver={(e) => {
@@ -266,7 +266,7 @@ export function ChatInput() {
           }}
         >
           {isDragActive && (
-            <div className="px-4 pt-3 text-xs font-medium text-[var(--primary-700)]">
+            <div className="px-4 pt-3 text-xs font-medium text-[var(--primary-700)] dark:text-[var(--primary-300)]">
               Drop PDF receipt to upload
             </div>
           )}
@@ -300,7 +300,7 @@ export function ChatInput() {
           )}
 
           {attachmentError && (
-            <div className="px-3 pb-1 text-xs text-[var(--error-700)]">{attachmentError}</div>
+            <div className="px-3 pb-1 text-xs text-[var(--error-700)] dark:text-[var(--error-300)]">{attachmentError}</div>
           )}
 
           <div className="flex items-center justify-between px-3 pb-2 pt-1">
@@ -339,7 +339,7 @@ export function ChatInput() {
                   isOllamaModel
                     ? "opacity-40 cursor-not-allowed"
                     : webSearchEnabled
-                    ? "bg-[var(--primary-100)] text-[var(--primary-700)]"
+                    ? "bg-[var(--primary-100)] text-[var(--primary-700)] dark:bg-[var(--primary-900)] dark:text-[var(--primary-200)]"
                     : "hover:bg-secondary text-muted-foreground"
                 }`}
                 title={isOllamaModel ? "Web search not available for Ollama models" : "Toggle web search"}
@@ -352,7 +352,7 @@ export function ChatInput() {
                 onClick={() => setMcpMenuOpen((prev) => !prev)}
                 className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${
                   mcpMenuOpen
-                    ? "bg-[var(--primary-100)] text-[var(--primary-700)]"
+                    ? "bg-[var(--primary-100)] text-[var(--primary-700)] dark:bg-[var(--primary-900)] dark:text-[var(--primary-200)]"
                     : "hover:bg-secondary text-muted-foreground"
                 }`}
                 title="MCP servers"
@@ -381,7 +381,7 @@ export function ChatInput() {
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded-full ${
                               isEnabled
-                                ? "bg-[var(--success-100)] text-[var(--success-700)]"
+                                ? "bg-[var(--success-100)] text-[var(--success-700)] dark:bg-[var(--success-900)] dark:text-[var(--success-100)]"
                                 : "bg-secondary text-muted-foreground"
                             }`}
                           >
@@ -389,7 +389,7 @@ export function ChatInput() {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">{server.description}</p>
-                        <p className="text-[11px] text-[var(--neutral-500)] mt-1">
+                        <p className="mt-1 text-[11px] text-[var(--neutral-500)] dark:text-[var(--neutral-400)]">
                           {server.source === "builtin" ? "Built-in" : "Custom"}
                         </p>
                       </button>
@@ -415,7 +415,7 @@ export function ChatInput() {
           </div>
           {recentAttachmentSuccess && (
             <div className="px-3 pb-2">
-              <div className="inline-flex items-center gap-1 rounded-md bg-[var(--success-100)] px-2 py-1 text-[11px] text-[var(--success-700)] animate-in fade-in duration-200">
+              <div className="inline-flex animate-in items-center gap-1 rounded-md bg-[var(--success-100)] px-2 py-1 text-[11px] text-[var(--success-700)] fade-in duration-200 dark:bg-[var(--success-900)] dark:text-[var(--success-100)]">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 <span>Receipt attached</span>
               </div>

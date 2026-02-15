@@ -60,7 +60,7 @@ export function ModelSelector() {
           if (!isOpen) setShowSuccess(false);
           setIsOpen(!isOpen);
         }}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-secondary hover:bg-[var(--neutral-200)] rounded-md transition-colors"
+        className="flex items-center gap-2 rounded-md bg-secondary px-3 py-1.5 text-sm transition-colors hover:bg-[var(--neutral-200)] dark:hover:bg-[var(--neutral-800)]"
       >
         <Brain className="w-4 h-4 text-muted-foreground" />
         <span className="max-w-[120px] truncate">{currentModelName}</span>
@@ -82,35 +82,35 @@ export function ModelSelector() {
             </div>
 
             {showSuccess && (
-              <div className="px-3 py-2 bg-[var(--success-50)] border-b border-[var(--success-100)] flex items-center gap-2 text-xs text-[var(--success-700)]">
+              <div className="flex items-center gap-2 border-b border-[var(--success-100)] bg-[var(--success-50)] px-3 py-2 text-xs text-[var(--success-700)] dark:border-[var(--success-800)] dark:bg-[var(--success-900)]/25 dark:text-[var(--success-200)]">
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 Model updated successfully
               </div>
             )}
 
             {error && (
-              <div className="px-3 py-2 bg-[var(--error-50)] border-b border-[var(--error-100)] flex items-center gap-2 text-xs text-[var(--error-600)]">
+              <div className="flex items-center gap-2 border-b border-[var(--error-100)] bg-[var(--error-50)] px-3 py-2 text-xs text-[var(--error-600)] dark:border-[var(--error-800)] dark:bg-[var(--error-900)]/25 dark:text-[var(--error-300)]">
                 <AlertCircle className="w-3 h-3" />
                 {error}
               </div>
             )}
 
             {ollamaStatus === "offline" && (
-              <div className="px-3 py-2 bg-[var(--brand-50)] border-b border-[var(--brand-100)] flex items-center gap-2 text-xs text-[var(--brand-800)]">
+              <div className="flex items-center gap-2 border-b border-[var(--brand-100)] bg-[var(--brand-50)] px-3 py-2 text-xs text-[var(--brand-800)] dark:border-[var(--brand-800)] dark:bg-[var(--brand-900)]/25 dark:text-[var(--brand-200)]">
                 <AlertCircle className="w-3 h-3" />
                 Ollama is offline - Local models unavailable
               </div>
             )}
 
             {openRouterCreditsError && (
-              <div className="px-3 py-2 bg-[var(--brand-50)] border-b border-[var(--brand-100)] flex items-center justify-between gap-2 text-xs text-[var(--brand-800)]">
+              <div className="flex items-center justify-between gap-2 border-b border-[var(--brand-100)] bg-[var(--brand-50)] px-3 py-2 text-xs text-[var(--brand-800)] dark:border-[var(--brand-800)] dark:bg-[var(--brand-900)]/25 dark:text-[var(--brand-200)]">
                 <div className="flex items-center gap-2 min-w-0">
                   <AlertCircle className="w-3 h-3 shrink-0" />
                   <span className="truncate">{openRouterCreditsError}</span>
                 </div>
                 <button
                   type="button"
-                  className="shrink-0 px-2 py-1 rounded border border-[var(--brand-300)] hover:bg-[var(--brand-100)] text-[var(--brand-900)] font-medium"
+                  className="shrink-0 rounded border border-[var(--brand-300)] px-2 py-1 font-medium text-[var(--brand-900)] hover:bg-[var(--brand-100)] dark:border-[var(--brand-700)] dark:text-[var(--brand-100)] dark:hover:bg-[var(--brand-800)]"
                   onClick={() => {
                     setCreditsError(null);
                     fetchModels();
@@ -141,7 +141,7 @@ export function ModelSelector() {
                       <span>{provider}</span>
                       {providers[provider]?.status !== "available" &&
                         providers[provider]?.status !== undefined && (
-                          <span className="text-[var(--brand-700)] text-[10px]">
+                          <span className="text-[10px] text-[var(--brand-700)] dark:text-[var(--brand-300)]">
                             ({providers[provider]?.status})
                           </span>
                         )}
@@ -165,23 +165,23 @@ export function ModelSelector() {
                             "w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-secondary transition-colors",
                             isDisabled && "opacity-50 cursor-not-allowed",
                             selectingId !== null && selectingId !== model.id && "opacity-60",
-                            isSelected && "bg-[var(--primary-100)]"
+                            isSelected && "bg-[var(--primary-100)] dark:bg-[var(--primary-900)]"
                           )}
                         >
                           <div className="flex items-center gap-2">
                             <span>{model.name}</span>
                             {model.free && (
-                              <span className="text-[10px] px-1 py-0.5 bg-[var(--success-100)] text-[var(--success-700)] rounded">
+                              <span className="rounded bg-[var(--success-100)] px-1 py-0.5 text-[10px] text-[var(--success-700)] dark:bg-[var(--success-900)] dark:text-[var(--success-100)]">
                                 FREE
                               </span>
                             )}
                             {!model.selectable && (
-                              <span className="text-[10px] px-1 py-0.5 bg-[var(--brand-100)] text-[var(--brand-800)] rounded">
+                              <span className="rounded bg-[var(--brand-100)] px-1 py-0.5 text-[10px] text-[var(--brand-800)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-100)]">
                                 Offline
                               </span>
                             )}
                             {isWebSearchBlocked && (
-                              <span className="text-[10px] px-1 py-0.5 bg-[var(--warning-100)] text-[var(--warning-800)] rounded">
+                              <span className="rounded bg-[var(--warning-100)] px-1 py-0.5 text-[10px] text-[var(--warning-800)] dark:bg-[var(--warning-900)] dark:text-[var(--warning-100)]">
                                 Web search on
                               </span>
                             )}
@@ -189,7 +189,7 @@ export function ModelSelector() {
                           {isSelecting ? (
                             <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
                           ) : isSelected ? (
-                            <Check className="w-4 h-4 text-[var(--primary-800)] shrink-0" />
+                            <Check className="w-4 h-4 shrink-0 text-[var(--primary-800)] dark:text-[var(--primary-200)]" />
                           ) : null}
                         </button>
                       );

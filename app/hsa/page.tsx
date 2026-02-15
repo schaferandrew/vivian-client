@@ -36,21 +36,24 @@ export default async function HSAPage() {
 
       <main className="max-w-5xl mx-auto px-4 py-8">
         {!isConfigured && (
-          <Card className="mb-6 border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
+          <Card className="mb-6 border-[var(--warning-200)] bg-[var(--warning-50)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20">
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                  <h3 className="flex items-center gap-2 font-semibold text-[var(--warning-900)] dark:text-[var(--warning-100)]">
                     <Settings className="w-4 h-4" />
                     HSA Ledger Not Configured
                   </h3>
-                  <p className="text-sm text-amber-800 dark:text-amber-200 max-w-xl">
+                  <p className="max-w-xl text-sm text-[var(--warning-800)] dark:text-[var(--warning-200)]">
                     Connect your Google account and configure your HSA spreadsheet to unlock expense tracking,
                     receipt management, and balance monitoring.
                   </p>
                 </div>
                 <Link href="/settings?section=mcp">
-                  <Button variant="outline" className="border-amber-300 hover:bg-amber-100 dark:border-amber-800 dark:hover:bg-amber-900 whitespace-nowrap">
+                  <Button
+                    variant="outline"
+                    className="whitespace-nowrap border-[var(--warning-300)] hover:bg-[var(--warning-100)] dark:border-[var(--warning-800)] dark:hover:bg-[var(--warning-900)]"
+                  >
                     Configure in Settings
                     <ExternalLink className="w-4 h-4 ml-2" />
                   </Button>

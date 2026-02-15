@@ -3,7 +3,6 @@ import type {
   BulkImportFileResult,
   BulkImportSummary,
   ReimbursementStatus,
-  ExpenseCategory,
 } from "@/types";
 
 type BulkImportStep = "upload" | "scanning" | "review" | "confirm" | "results";
