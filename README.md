@@ -165,6 +165,29 @@ docker-compose -f docker-compose.yml up --build
 - File uploads use the native Fetch API with FormData
 - The UI is built with Tailwind CSS and custom components
 
+## Dark Mode Guidelines
+
+- Dark mode in this repo is class-based (`darkMode: ["class"]` in `tailwind.config.js`).
+- Theme is applied by toggling `.dark` on the root `<html>` element.
+- The current client-side preference is `light | dark | system` and is stored in localStorage under `vivian-theme-preference`.
+
+### Building UI That Supports Dark Mode
+
+1. Prefer semantic theme utilities:
+   - `bg-background`, `text-foreground`, `border-border`, `bg-card`, `text-muted-foreground`
+2. If using palette classes/tokens, add dark variants:
+   - Example: `bg-[var(--primary-100)] dark:bg-[var(--primary-900)]`
+3. Avoid light-only hardcoded colors:
+   - Avoid patterns like `bg-white`, `text-gray-800`, and hex-only gradients without `dark:` variants
+4. Ensure interaction states are themed:
+   - `hover:`, `active:`, selected states, badges, alerts, and banners should all include dark-aware styling
+
+### Quick Validation
+
+- Check each changed screen/component in both light and dark.
+- Confirm text contrast and border visibility in dark mode.
+- Confirm alert/success/error colors remain readable in dark mode.
+
 ## Troubleshooting
 
 ### WebSocket Connection Issues
