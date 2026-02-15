@@ -9,6 +9,12 @@ const AGENT_API_URL =
   process.env.NEXT_PUBLIC_AGENT_API_URL ||
   "http://localhost:8000/api/v1";
 
+type ApiError = Error & {
+  status: number;
+  originalMessage: string;
+  data?: unknown;
+};
+
 function getMessageFromPayload(payload: unknown, status: number, statusText: string): string {
   if (typeof payload === "string" && payload.trim()) {
     return payload.trim();
@@ -27,11 +33,20 @@ function getMessageFromPayload(payload: unknown, status: number, statusText: str
   return `API Error: ${status} ${statusText}`;
 }
 
+function attachApiErrorMetadata(
+  error: Error,
+  status: number,
+  originalMessage: string,
+  data?: unknown
+): ApiError {
+  return Object.assign(error, { status, originalMessage, data });
+}
+
 function createApiError(
   status: number,
   statusText: string,
   payload: unknown
-): Error {
+): ApiError {
   const message = getMessageFromPayload(payload, status, statusText);
   
   // Provide user-friendly messages for common error scenarios
@@ -44,11 +59,7 @@ function createApiError(
     userMessage = "Cannot connect to server. Please check your connection or try again.";
   }
 
-  const error = new Error(userMessage);
-  (error as any).status = status;
-  (error as any).originalMessage = message;
-  (error as any).data = payload;
-  return error;
+  return attachApiErrorMetadata(new Error(userMessage), status, message, payload);
 }
 
 async function fetchWithErrorHandling(
@@ -60,14 +71,13 @@ async function fetchWithErrorHandling(
     return response;
   } catch (networkError) {
     // Fetch failed entirely (network issue, server down, etc.)
-    const error = new Error(
-      "Cannot connect to server. Please check your connection or try again."
+    const originalMessage =
+      networkError instanceof Error ? networkError.message : "Network error";
+    throw attachApiErrorMetadata(
+      new Error("Cannot connect to server. Please check your connection or try again."),
+      0,
+      originalMessage
     );
-    (error as any).status = 0;
-    (error as any).originalMessage = networkError instanceof Error 
-      ? networkError.message 
-      : "Network error";
-    throw error;
   }
 }
 

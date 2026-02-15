@@ -17,7 +17,7 @@ export function ErrorPanel({ children, showIcon = false, size = "md" }: ErrorPan
 
   return (
     <div
-      className={`${sizeClasses[size]} bg-[var(--error-50)] border border-[var(--error-200)] text-[var(--error-700)] ${showIcon ? "flex items-center gap-2" : ""}`}
+      className={`${sizeClasses[size]} border border-[var(--error-200)] bg-[var(--error-50)] text-[var(--error-700)] dark:border-[var(--error-800)] dark:bg-[var(--error-900)]/25 dark:text-[var(--error-300)] ${showIcon ? "flex items-center gap-2" : ""}`}
     >
       {showIcon && <AlertCircle className="h-4 w-4 flex-shrink-0" />}
       {children}
@@ -40,7 +40,7 @@ export function WarningPanel({ children, showIcon = false, size = "md" }: Warnin
 
   return (
     <div
-      className={`${sizeClasses[size]} bg-[var(--warning-50)] border border-[var(--warning-200)] text-[var(--warning-700)] ${showIcon ? "flex items-center gap-2" : ""}`}
+      className={`${sizeClasses[size]} border border-[var(--warning-200)] bg-[var(--warning-50)] text-[var(--warning-700)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/25 dark:text-[var(--warning-300)] ${showIcon ? "flex items-center gap-2" : ""}`}
     >
       {showIcon && <AlertCircle className="h-4 w-4 flex-shrink-0" />}
       {children}

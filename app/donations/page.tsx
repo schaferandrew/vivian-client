@@ -45,7 +45,7 @@ export default async function DonationsPage() {
             <Link href="/" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <Heart className="w-6 h-6 text-[var(--accent-500)]" />
+            <Heart className="w-6 h-6 text-[var(--brand-600)] dark:text-[var(--brand-300)]" />
             <h1 className="text-xl font-semibold">Donations</h1>
           </div>
         </div>
@@ -53,9 +53,9 @@ export default async function DonationsPage() {
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {(fetchError || (data.total === 0 && !summaryData)) && (
-          <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
+          <Card className="border-[var(--warning-200)] bg-[var(--warning-50)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20">
             <CardContent className="pt-4">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+              <p className="text-sm text-[var(--warning-800)] dark:text-[var(--warning-200)]">
                 <strong>Configure Charitable Ledger:</strong> Go to{" "}
                 <Link href="/settings" className="underline hover:no-underline">
                   Settings
@@ -67,7 +67,7 @@ export default async function DonationsPage() {
         )}
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-[#FDE2FF] via-[#F0F4FF] to-[#E1F1FF]">
+          <Card className="bg-gradient-to-br from-[var(--brand-100)] via-[var(--primary-50)] to-[var(--primary-100)] dark:from-[var(--brand-900)] dark:via-[var(--primary-900)] dark:to-[var(--neutral-900)]">
             <CardHeader>
               <CardDescription className="text-sm text-muted-foreground">Total donations</CardDescription>
               <CardTitle className="text-3xl">{formatCurrency(data.total)}</CardTitle>
@@ -77,17 +77,17 @@ export default async function DonationsPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-[#FFEDE5] via-[#FFF8EA] to-[#F0FBEF]">
+          <Card className="bg-gradient-to-br from-[var(--warning-100)] via-[var(--brand-50)] to-[var(--success-100)] dark:from-[var(--warning-900)] dark:via-[var(--neutral-900)] dark:to-[var(--success-900)]">
             <CardHeader>
               <CardDescription className="text-sm text-muted-foreground">Tax-deductible</CardDescription>
-              <CardTitle className="text-3xl text-[var(--success-600)]">{formatCurrency(data.tax_deductible_total)}</CardTitle>
+              <CardTitle className="text-3xl text-[var(--success-600)] dark:text-[var(--success-300)]">{formatCurrency(data.tax_deductible_total)}</CardTitle>
             </CardHeader>
             <CardContent>
               <Badge variant="outline">{yearEntries.length ? `${yearEntries.length} years tracked` : "Starting fresh"}</Badge>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-[#E6F7FF] via-[#EFE9FF] to-[#FFF1F5]">
+          <Card className="bg-gradient-to-br from-[var(--primary-100)] via-[var(--primary-50)] to-[var(--brand-100)] dark:from-[var(--primary-900)] dark:via-[var(--neutral-900)] dark:to-[var(--brand-900)]">
             <CardHeader>
               <CardDescription className="text-sm text-muted-foreground">Next steps</CardDescription>
               <CardTitle className="text-3xl">{orgEntries.length ? `${orgEntries.length} orgs` : "Add more"}</CardTitle>
@@ -101,7 +101,7 @@ export default async function DonationsPage() {
         {fetchError && (
           <Card>
             <CardContent>
-              <p className="text-sm text-[var(--warning-800)]">{fetchError}</p>
+              <p className="text-sm text-[var(--warning-800)] dark:text-[var(--warning-200)]">{fetchError}</p>
             </CardContent>
           </Card>
         )}

@@ -39,16 +39,16 @@ export default function ChatPage() {
         <ChatHeader />
 
         {openRouterCreditsError && (
-          <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-[var(--brand-50)] border-b border-[var(--brand-200)] text-sm text-[var(--brand-900)] shrink-0">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-2.5 text-sm text-[var(--brand-900)] dark:border-[var(--brand-800)] dark:bg-[var(--brand-900)]/25 dark:text-[var(--brand-100)]">
             <div className="max-w-3xl mx-auto w-full flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <AlertCircle className="w-4 h-4 shrink-0 text-[var(--brand-700)]" />
+                <AlertCircle className="h-4 w-4 shrink-0 text-[var(--brand-700)] dark:text-[var(--brand-300)]" />
                 <span className="truncate">{openRouterCreditsError}</span>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="shrink-0 border-[var(--brand-300)] text-[var(--brand-900)] hover:bg-[var(--brand-100)]"
+                className="shrink-0 border-[var(--brand-300)] text-[var(--brand-900)] hover:bg-[var(--brand-100)] dark:border-[var(--brand-700)] dark:text-[var(--brand-100)] dark:hover:bg-[var(--brand-800)]"
                 onClick={() => setCreditsError(null)}
               >
                 Try again
@@ -58,16 +58,16 @@ export default function ChatPage() {
         )}
 
         {rateLimitError && (
-          <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-[var(--error-50)] border-b border-[var(--error-200)] text-sm text-[var(--error-800)] shrink-0">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--error-200)] bg-[var(--error-50)] px-4 py-2.5 text-sm text-[var(--error-800)] dark:border-[var(--error-800)] dark:bg-[var(--error-900)]/25 dark:text-[var(--error-200)]">
             <div className="max-w-3xl mx-auto w-full flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <AlertCircle className="w-4 h-4 shrink-0 text-[var(--error-600)]" />
+                <AlertCircle className="h-4 w-4 shrink-0 text-[var(--error-600)] dark:text-[var(--error-400)]" />
                 <span className="truncate">{rateLimitError}</span>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="shrink-0 border-[var(--error-300)] text-[var(--error-800)] hover:bg-[var(--error-100)]"
+                className="shrink-0 border-[var(--error-300)] text-[var(--error-800)] hover:bg-[var(--error-100)] dark:border-[var(--error-700)] dark:text-[var(--error-200)] dark:hover:bg-[var(--error-800)]"
                 onClick={() => setRateLimitError(null)}
               >
                 Try again

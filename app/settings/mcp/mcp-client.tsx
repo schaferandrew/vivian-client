@@ -192,11 +192,11 @@ export function McpClient({ initialServers, googleConnected }: McpClientProps) {
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-sm">{server.name}</p>
                         {server.requires_connection === "google" && googleConnected ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                          <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-[var(--success-100)] text-[var(--success-800)] dark:bg-[var(--success-900)] dark:text-[var(--success-100)]">
                             Google connected
                           </span>
                         ) : server.requires_connection ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-[var(--primary-100)] text-[var(--primary-800)] dark:bg-[var(--primary-900)] dark:text-[var(--primary-100)]">
                             Requires: {server.requires_connection}
                           </span>
                         ) : null}

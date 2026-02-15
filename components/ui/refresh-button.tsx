@@ -38,7 +38,7 @@ export function RefreshButton({
       aria-busy={isRefreshing}
       title={title}
       className={cn(
-        "p-1 rounded-md text-[var(--neutral-600)] hover:text-[var(--neutral-900)] hover:bg-[var(--neutral-200)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed",
+        "rounded-md p-1 text-[var(--neutral-600)] transition-colors hover:bg-[var(--neutral-200)] hover:text-[var(--neutral-900)] disabled:cursor-not-allowed disabled:opacity-60 dark:text-[var(--neutral-400)] dark:hover:bg-[var(--neutral-800)] dark:hover:text-[var(--neutral-100)]",
         className
       )}
     >
