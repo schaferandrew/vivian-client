@@ -53,7 +53,7 @@ export default async function DonationsPage() {
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {(fetchError || (data.total === 0 && !summaryData)) && (
-          <Card className="border-[var(--warning-200)] bg-[var(--warning-50)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20">
+          <Card className="border-[var(--warning-200)] bg-[var(--warning-50)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]">
             <CardContent className="pt-4">
               <p className="text-sm text-[var(--warning-800)] dark:text-[var(--warning-200)]">
                 <strong>Configure Charitable Ledger:</strong> Go to{" "}
