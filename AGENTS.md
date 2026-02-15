@@ -32,7 +32,7 @@ All new or updated UI must support both light and dark mode.
 
 ## Git Workflow Rule (Required)
 
-- NEVER force push (`git push --force` or `git push -f`).
+- NEVER force push to main (`git push --force` or `git push -f` to main/master).
 - Always create a feature branch for changes (e.g., `fix/...`, `feat/...`).
 - Use proper workflow: `git checkout -b <branch>`, make changes, `git add`, `git commit`, `git push -u origin <branch>`, then create a PR via `gh pr create`.
 - Only push directly to `main` if explicitly requested by the user.
