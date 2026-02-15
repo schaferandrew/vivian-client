@@ -326,8 +326,13 @@ function ReceiptConfirmationCard({ workflow, onCancel }: { workflow: DocumentWor
           )}
 
           <div className="flex items-center justify-between">
-            <Button onClick={handleContinue} disabled={isCheckingDuplicates} size="sm">
-              {isCheckingDuplicates ? "Checking duplicates..." : "Continue"}
+            <Button
+              onClick={handleContinue}
+              size="sm"
+              loading={isCheckingDuplicates}
+              loadingText="Checking duplicates..."
+            >
+              Continue
             </Button>
             <button
               onClick={() => setStep("canceled")}
@@ -382,9 +387,11 @@ function ReceiptConfirmationCard({ workflow, onCancel }: { workflow: DocumentWor
             <Button
               size="sm"
               onClick={handleConfirm}
-              disabled={isSubmitting || (isDuplicate && !forceImport)}
+              disabled={isDuplicate && !forceImport}
+              loading={isSubmitting}
+              loadingText="Saving..."
             >
-              {isSubmitting ? "Saving..." : isDuplicate ? "Import Anyway" : "Confirm & Save"}
+              {isDuplicate ? "Import Anyway" : "Confirm & Save"}
             </Button>
           </div>
 

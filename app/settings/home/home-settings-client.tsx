@@ -123,9 +123,11 @@ export function HomeSettingsClient({ initialData, roleOptions }: HomeSettingsCli
             <Button
               type="button"
               onClick={handleSaveHomeName}
-              disabled={isSavingName || !homeName.trim()}
+              disabled={!homeName.trim()}
+              loading={isSavingName}
+              loadingText="Saving..."
             >
-              {isSavingName ? "Saving..." : "Save home name"}
+              Save home name
             </Button>
             {initialData.timezone && (
               <span className="text-xs text-muted-foreground">
@@ -190,11 +192,12 @@ export function HomeSettingsClient({ initialData, roleOptions }: HomeSettingsCli
                     variant="outline"
                     onClick={() => handleSaveMemberRole(member.membership_id)}
                     disabled={
-                      updatingMemberId === member.membership_id ||
                       (memberRoles[member.membership_id] ?? member.role) === member.role
                     }
+                    loading={updatingMemberId === member.membership_id}
+                    loadingText="Saving..."
                   >
-                    {updatingMemberId === member.membership_id ? "Saving..." : "Save role"}
+                    Save role
                   </Button>
                 </div>
               </div>

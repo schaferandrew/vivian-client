@@ -126,10 +126,11 @@ export function ConnectionsClient({
               <Button
                 variant="outline"
                 onClick={handleDisconnect}
-                disabled={isDisconnecting}
+                loading={isDisconnecting}
+                loadingText="Disconnecting..."
                 className="mt-2"
               >
-                {isDisconnecting ? "Disconnecting..." : "Disconnect Google"}
+                Disconnect Google
               </Button>
             </div>
           ) : (

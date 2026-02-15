@@ -1,20 +1,33 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "outline" | "ghost" | "destructive";
   size?: "default" | "sm" | "lg";
+  loading?: boolean;
+  loadingText?: string;
+  spinnerClassName?: string;
 }
 
 export function Button({
   className,
   variant = "default",
   size = "default",
+  children,
+  disabled = false,
+  loading = false,
+  loadingText = "Loading...",
+  spinnerClassName,
   ...props
 }: ButtonProps) {
+  const isDisabled = disabled || loading;
+  const spinnerSizeClass = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
+
   return (
     <button
+      {...props}
       className={cn(
         "inline-flex items-center justify-center rounded-md font-medium transition-colors text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
         {
@@ -28,7 +41,17 @@ export function Button({
         },
         className
       )}
-      {...props}
-    />
+      disabled={isDisabled}
+      aria-busy={loading || undefined}
+    >
+      {loading ? (
+        <>
+          <Loader2 className={cn("mr-2 animate-spin", spinnerSizeClass, spinnerClassName)} />
+          <span>{loadingText}</span>
+        </>
+      ) : (
+        children
+      )}
+    </button>
   );
 }

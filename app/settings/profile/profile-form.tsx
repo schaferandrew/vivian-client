@@ -212,8 +212,8 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
               <p className="text-sm text-[var(--success-600)]">{success}</p>
             )}
 
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save Changes"}
+            <Button type="submit" loading={isLoading} loadingText="Saving...">
+              Save Changes
             </Button>
           </form>
         </CardContent>
