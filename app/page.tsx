@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MessageSquare, Upload, Wallet, Settings } from "lucide-react";
+import { MessageSquare, Upload, Wallet, Settings, Heart } from "lucide-react";
 import { ProfileMenu } from "@/components/ui/profile-menu";
 
 export default function HomePage() {
@@ -38,8 +38,8 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[var(--primary-100)] rounded-lg flex items-center justify-center">
-                    <MessageSquare className="w-5 h-5 text-[var(--primary-700)]" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary-100)] dark:bg-[var(--primary-900)]">
+                    <MessageSquare className="h-5 w-5 text-[var(--primary-700)] dark:text-[var(--primary-200)]" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">Chat</CardTitle>
@@ -54,8 +54,8 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[var(--success-100)] rounded-lg flex items-center justify-center">
-                    <Upload className="w-5 h-5 text-[var(--success-700)]" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--success-100)] dark:bg-[var(--success-900)]">
+                    <Upload className="h-5 w-5 text-[var(--success-700)] dark:text-[var(--success-200)]" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">Receipts</CardTitle>
@@ -70,12 +70,28 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[var(--brand-100)] rounded-lg flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-[var(--brand-800)]" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-100)] dark:bg-[var(--brand-900)]">
+                    <Wallet className="h-5 w-5 text-[var(--brand-800)] dark:text-[var(--brand-200)]" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">HSA Dashboard</CardTitle>
                     <CardDescription>View your HSA balance and recent expenses</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link href="/donations">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-100)] dark:bg-[var(--brand-900)]">
+                    <Heart className="h-5 w-5 text-[var(--brand-700)] dark:text-[var(--brand-200)]" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Donations</CardTitle>
+                    <CardDescription>Track charitable receipts and tax-deductible giving</CardDescription>
                   </div>
                 </div>
               </CardHeader>

@@ -74,6 +74,9 @@ interface BulkImportActions {
   // Options
   setOptions: (options: Partial<BulkImportState["options"]>) => void;
   
+  // Update a single result (e.g. category override)
+  updateResult: (tempFilePath: string, patch: Partial<BulkImportFileResult>) => void;
+
   // Import results
   setImportResults: (results: BulkImportState["importResults"]) => void;
   
@@ -164,6 +167,22 @@ export const useBulkImportStore = create<BulkImportState & BulkImportActions>(
     setOptions: (options) =>
       set((state) => ({ options: { ...state.options, ...options } })),
     
+    updateResult: (tempFilePath, patch) =>
+      set((state) => {
+        const patchList = (list: BulkImportFileResult[]) =>
+          list.map((r) =>
+            r.temp_file_path === tempFilePath ? { ...r, ...patch } : r
+          );
+        return {
+          results: {
+            new: patchList(state.results.new),
+            duplicates: patchList(state.results.duplicates),
+            flagged: patchList(state.results.flagged),
+            failed: patchList(state.results.failed),
+          },
+        };
+      }),
+
     setImportResults: (importResults) => set({ importResults }),
     
     setError: (error) => set({ error }),
@@ -187,8 +206,12 @@ export const getReadyToImportCount = (state: BulkImportState): number => {
 export const getTotalAmount = (state: BulkImportState): number => {
   let total = 0;
   const addAmount = (r: BulkImportFileResult) => {
-    if (r.expense && r.status !== "failed" && r.status !== "skipped") {
-      total += r.expense.amount;
+    if (r.status !== "failed" && r.status !== "skipped") {
+      if (r.expense) {
+        total += r.expense.amount;
+      } else if (r.charitable_data) {
+        total += r.charitable_data.amount;
+      }
     }
   };
   

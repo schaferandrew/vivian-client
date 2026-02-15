@@ -1,18 +1,26 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { CheckCircle2, Globe, Loader2, Paperclip, Plus, Send, X } from "lucide-react";
+
 import { useChatStore } from "@/lib/stores/chat";
 import { useModelStore } from "@/lib/stores/model";
-import { sendChatMessage, updateEnabledMcpServers } from "@/lib/api/client";
+import { sendChatMessage, uploadReceipt } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Globe, Paperclip, Plus, Send } from "lucide-react";
-import Link from "next/link";
+import type { ChatAttachmentInput } from "@/types";
 
 export function ChatInput() {
   const [message, setMessage] = useState("");
   const [mcpMenuOpen, setMcpMenuOpen] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachmentInput[]>([]);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [recentAttachmentSuccess, setRecentAttachmentSuccess] = useState(false);
+  const [enabledMcpServerIds, setEnabledMcpServerIds] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const mcpMenuRef = useRef<HTMLDivElement>(null);
   const {
     addMessage,
@@ -21,11 +29,13 @@ export function ChatInput() {
     setWebSearchEnabled,
     mcpServers,
     fetchMcpServers,
-    setMcpServerEnabled,
     fetchChats,
   } = useChatStore();
   const setCreditsError = useModelStore((s) => s.setCreditsError);
   const setRateLimitError = useModelStore((s) => s.setRateLimitError);
+  const models = useModelStore((s) => s.models);
+  const currentModel = useModelStore((s) => s.currentModel);
+  const isOllamaModel = models.find((m) => m.id === currentModel)?.provider === "Ollama";
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -41,6 +51,10 @@ export function ChatInput() {
   }, [mcpServers.length, fetchMcpServers]);
 
   useEffect(() => {
+    setEnabledMcpServerIds(mcpServers.filter((server) => server.enabled).map((server) => server.id));
+  }, [mcpServers]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!mcpMenuRef.current) return;
       if (!mcpMenuRef.current.contains(event.target as Node)) {
@@ -54,50 +68,99 @@ export function ChatInput() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [mcpMenuOpen]);
 
-  const handleToggleMcpServer = async (serverId: string) => {
-    const nextServers = mcpServers.map((server) =>
-      server.id === serverId ? { ...server, enabled: !server.enabled } : server
+  const handleToggleMcpServer = (serverId: string) => {
+    setEnabledMcpServerIds((current) =>
+      current.includes(serverId)
+        ? current.filter((id) => id !== serverId)
+        : [...current, serverId]
     );
-    setMcpServerEnabled(
-      serverId,
-      !!nextServers.find((server) => server.id === serverId)?.enabled
-    );
+  };
+
+  const handleAttachFile = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    const isPdf =
+      file.type.toLowerCase().includes("pdf") || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      setAttachmentError(
+        `Only PDF receipts are supported right now. "${file.name}" wasn't a PDF.`
+      );
+      return;
+    }
+
+    setIsUploadingAttachment(true);
+    setAttachmentError(null);
     try {
-      const enabledIds = nextServers.filter((server) => server.enabled).map((server) => server.id);
-      await updateEnabledMcpServers(enabledIds);
+      const upload = await uploadReceipt(file);
+      setPendingAttachments([
+        {
+          document_type: "receipt",
+          temp_file_path: upload.temp_file_path,
+          filename: file.name,
+          mime_type: file.type || "application/pdf",
+        },
+      ]);
+      setRecentAttachmentSuccess(true);
+      setTimeout(() => {
+        setRecentAttachmentSuccess(false);
+      }, 450);
     } catch (error) {
-      console.error("Failed to persist MCP server selection:", error);
+      setAttachmentError(error instanceof Error ? error.message : "Failed to upload receipt.");
+    } finally {
+      setIsUploadingAttachment(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() && pendingAttachments.length === 0) return;
 
-    const userMessage = message.trim();
+    const outgoingAttachments = [...pendingAttachments];
+    const baseUserMessage = message.trim() || "Please process this receipt.";
+    const attachmentLabel =
+      outgoingAttachments.length > 0
+        ? `\n\nAttached: ${outgoingAttachments
+            .map((attachment) => attachment.filename || "receipt.pdf")
+            .join(", ")}`
+        : "";
 
     addMessage({
       id: Date.now().toString(),
       role: "user",
-      content: userMessage,
+      content: `${baseUserMessage}${attachmentLabel}`,
       timestamp: new Date(),
     });
 
     setMessage("");
+    setPendingAttachments([]);
+    setAttachmentError(null);
     setLoading(true);
 
     try {
+      const selectedModel = models.find((model) => model.id === currentModel);
+      if (webSearchEnabled && selectedModel?.provider === "Ollama") {
+        addMessage({
+          id: (Date.now() + 1).toString(),
+          role: "system",
+          content:
+            "Web search isn't supported by Ollama models. Disable web search or pick an OpenRouter model.",
+          timestamp: new Date(),
+        });
+        setLoading(false);
+        return;
+      }
+
       const { sessionId, currentChatId } = useChatStore.getState();
-      const enabledMcpServers = useChatStore
-        .getState()
-        .mcpServers.filter((server) => server.enabled)
-        .map((server) => server.id);
+      const enabledMcpServers = mcpServers.length > 0 ? enabledMcpServerIds : undefined;
       const response = await sendChatMessage(
-        userMessage,
+        baseUserMessage,
         sessionId,
         currentChatId,
         webSearchEnabled,
-        enabledMcpServers
+        enabledMcpServers,
+        outgoingAttachments
       );
       setCreditsError(null);
       setRateLimitError(null);
@@ -108,15 +171,24 @@ export function ChatInput() {
       }));
 
       await fetchChats();
+      const attachmentAcknowledgement =
+        outgoingAttachments.length > 0
+          ? "Receipt received. I parsed it and need your confirmation below.\n\n"
+          : "";
 
       addMessage({
         id: (Date.now() + 1).toString(),
         role: "agent",
-        content: response.response,
+        content: `${attachmentAcknowledgement}${response.response}`,
         timestamp: new Date(),
         toolsCalled: response.tools_called ?? [],
+        documentWorkflows: response.document_workflows ?? [],
       });
     } catch (error) {
+      if (outgoingAttachments.length > 0) {
+        setPendingAttachments(outgoingAttachments);
+      }
+
       console.error("Failed to send message:", error);
       const err = error as Error & { code?: string };
       if (err?.code === "insufficient_credits") {
@@ -167,7 +239,38 @@ export function ChatInput() {
   return (
     <form onSubmit={handleSubmit} className="bg-background shrink-0">
       <div className="max-w-3xl mx-auto px-4 pb-4 pt-3">
-        <div className="border border-border rounded-2xl bg-card">
+        <div
+          className={`border rounded-2xl bg-card transition-colors ${
+            isDragActive
+              ? "border-[var(--primary-500)] bg-[var(--primary-50)] dark:bg-[var(--primary-900)]/25"
+              : "border-border"
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!isDragActive) {
+              setIsDragActive(true);
+            }
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            if (e.currentTarget.contains(e.relatedTarget as Node)) {
+              return;
+            }
+            setIsDragActive(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragActive(false);
+            const droppedFile = e.dataTransfer.files?.[0] || null;
+            void handleAttachFile(droppedFile);
+          }}
+        >
+          {isDragActive && (
+            <div className="px-4 pt-3 text-xs font-medium text-[var(--primary-700)] dark:text-[var(--primary-300)]">
+              Drop PDF receipt to upload
+            </div>
+          )}
+
           <Textarea
             ref={textareaRef}
             value={message}
@@ -178,25 +281,68 @@ export function ChatInput() {
             rows={1}
           />
 
+          {pendingAttachments.length > 0 && (
+            <div className="px-3">
+              <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-background px-2 py-1.5">
+                <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-xs text-foreground truncate">
+                  {pendingAttachments[0].filename || "receipt.pdf"}
+                </p>
+                <button
+                  type="button"
+                  className="ml-auto rounded-md p-1 hover:bg-secondary"
+                  onClick={() => setPendingAttachments([])}
+                >
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {attachmentError && (
+            <div className="px-3 pb-1 text-xs text-[var(--error-700)] dark:text-[var(--error-300)]">{attachmentError}</div>
+          )}
+
           <div className="flex items-center justify-between px-3 pb-2 pt-1">
             <div className="flex items-center gap-1 relative" ref={mcpMenuRef}>
-              <Link
-                href="/receipts"
-                className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-secondary transition-colors"
-                title="Upload receipt"
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={(e) => {
+                  const selected = e.target.files?.[0] || null;
+                  void handleAttachFile(selected);
+                  e.currentTarget.value = "";
+                }}
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingAttachment}
+                className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-secondary transition-colors text-muted-foreground disabled:opacity-70"
+                title="Attach receipt (PDF)"
               >
-                <Paperclip className="w-4 h-4 text-muted-foreground" />
-              </Link>
+                {isUploadingAttachment ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Paperclip className="w-4 h-4" />
+                )}
+              </button>
 
               <button
                 type="button"
                 onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                disabled={isOllamaModel}
                 className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${
-                  webSearchEnabled
-                    ? "bg-[var(--primary-100)] text-[var(--primary-700)]"
+                  isOllamaModel
+                    ? "opacity-40 cursor-not-allowed"
+                    : webSearchEnabled
+                    ? "bg-[var(--primary-100)] text-[var(--primary-700)] dark:bg-[var(--primary-900)] dark:text-[var(--primary-200)]"
                     : "hover:bg-secondary text-muted-foreground"
                 }`}
-                title="Toggle web search"
+                title={isOllamaModel ? "Web search not available for Ollama models" : "Toggle web search"}
               >
                 <Globe className="w-4 h-4" />
               </button>
@@ -206,7 +352,7 @@ export function ChatInput() {
                 onClick={() => setMcpMenuOpen((prev) => !prev)}
                 className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${
                   mcpMenuOpen
-                    ? "bg-[var(--primary-100)] text-[var(--primary-700)]"
+                    ? "bg-[var(--primary-100)] text-[var(--primary-700)] dark:bg-[var(--primary-900)] dark:text-[var(--primary-200)]"
                     : "hover:bg-secondary text-muted-foreground"
                 }`}
                 title="MCP servers"
@@ -221,7 +367,9 @@ export function ChatInput() {
                     {mcpServers.length === 0 && (
                       <p className="text-xs text-muted-foreground px-2 py-1">No servers found.</p>
                     )}
-                    {mcpServers.map((server) => (
+                    {mcpServers.map((server) => {
+                      const isEnabled = enabledMcpServerIds.includes(server.id);
+                      return (
                       <button
                         key={server.id}
                         type="button"
@@ -232,20 +380,21 @@ export function ChatInput() {
                           <span className="text-sm font-medium text-foreground">{server.name}</span>
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded-full ${
-                              server.enabled
-                                ? "bg-[var(--success-100)] text-[var(--success-700)]"
+                              isEnabled
+                                ? "bg-[var(--success-100)] text-[var(--success-700)] dark:bg-[var(--success-900)] dark:text-[var(--success-100)]"
                                 : "bg-secondary text-muted-foreground"
                             }`}
                           >
-                            {server.enabled ? "ON" : "OFF"}
+                            {isEnabled ? "ON" : "OFF"}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">{server.description}</p>
-                        <p className="text-[11px] text-[var(--neutral-500)] mt-1">
+                        <p className="mt-1 text-[11px] text-[var(--neutral-500)] dark:text-[var(--neutral-400)]">
                           {server.source === "builtin" ? "Built-in" : "Custom"}
                         </p>
                       </button>
-                    ))}
+                    );
+                    })}
                   </div>
                 </div>
               )}
@@ -253,14 +402,25 @@ export function ChatInput() {
 
             <Button
               type="submit"
-              disabled={!message.trim()}
+              disabled={
+                isUploadingAttachment ||
+                (!message.trim() && pendingAttachments.length === 0)
+              }
               size="sm"
               className="h-8 px-3 rounded-md"
             >
               <Send className="w-4 h-4 mr-2" />
-              Send
+              {pendingAttachments.length > 0 ? "Send & Process" : "Send"}
             </Button>
           </div>
+          {recentAttachmentSuccess && (
+            <div className="px-3 pb-2">
+              <div className="inline-flex animate-in items-center gap-1 rounded-md bg-[var(--success-100)] px-2 py-1 text-[11px] text-[var(--success-700)] fade-in duration-200 dark:bg-[var(--success-900)] dark:text-[var(--success-100)]">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Receipt attached</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </form>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { REFRESH_TOKEN_COOKIE } from "@/lib/auth/constants";
-import { AGENT_API_URL, setAuthCookies, type TokenPair } from "@/lib/auth/server";
+import { AGENT_API_URL, clearAuthCookies, setAuthCookies, type TokenPair } from "@/lib/auth/server";
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +26,11 @@ export async function POST(request: Request) {
 
     const payload = await backendResponse.json().catch(() => ({}));
     if (!backendResponse.ok) {
-      return NextResponse.json(payload, { status: backendResponse.status });
+      const response = NextResponse.json(payload, { status: backendResponse.status });
+      if (backendResponse.status === 401) {
+        clearAuthCookies(response);
+      }
+      return response;
     }
 
     const response = NextResponse.json({ success: true });

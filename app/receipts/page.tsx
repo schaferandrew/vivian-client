@@ -1,22 +1,56 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useReceiptStore } from "@/lib/stores/receipt";
 import { useBulkImportStore } from "@/lib/stores/bulk-import";
 import { uploadReceipt, parseReceipt, confirmReceipt, checkReceiptDuplicate } from "@/lib/api/client";
 import { BulkImportFlow } from "@/components/receipt/BulkImportFlow";
+import { ConfidenceBadge } from "@/components/receipt/ReceiptStatusBadge";
+import { ErrorPanel, WarningPanel } from "@/components/receipt/StatusPanels";
+import { SuccessState } from "@/components/receipt/SharedReceiptComponents";
+import {
+  DuplicateInfoPanel,
+  ExpenseEditor,
+  ReimbursementStatusSelector,
+  TaskStatusRow,
+} from "@/components/receipt/SharedReceiptComponents";
+import { CharitableExpenseEditor } from "@/components/receipt/CharitableExpenseEditor";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, CheckCircle, AlertCircle, ArrowLeft, FolderOpen, FileUp, Loader2, Circle } from "lucide-react";
-import type { ReimbursementStatus, DuplicateInfo } from "@/types";
+
+import { Upload, FileText, ArrowLeft, FolderOpen, FileUp } from "lucide-react";
+import type { ReimbursementStatus, DuplicateInfo, ExpenseCategory } from "@/types";
 
 type UploadMode = "single" | "bulk";
 
+function CategoryToggle({ value, onChange }: { value: ExpenseCategory; onChange: (val: ExpenseCategory) => void }) {
+  return (
+    <div className="flex gap-2 mb-4">
+      <button
+        type="button"
+        onClick={() => onChange("hsa")}
+        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          value === "hsa" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+        }`}
+      >
+        HSA Medical
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("charitable")}
+        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          value === "charitable" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+        }`}
+      >
+        Charitable Donation
+      </button>
+    </div>
+  );
+}
+
 function SingleUploadStep() {
-  const { setStep, setTempFilePath, setUploading, isUploading, setError } = useReceiptStore();
+  const { setStep, setTempFilePath, setUploading, isUploading, setError, category, setCategory } = useReceiptStore();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: FileList | null) => {
@@ -47,32 +81,37 @@ function SingleUploadStep() {
   };
 
   return (
-    <div
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        onDrop(e.dataTransfer.files);
-      }}
-      className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-[var(--neutral-300)] transition-colors"
-    >
-      <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-      <p className="text-muted-foreground mb-2">Drag and drop a PDF receipt here</p>
-      <p className="text-sm text-[var(--neutral-400)] mb-4">or</p>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf"
-        onChange={handleFileInput}
-        className="hidden"
-      />
-      <Button
-        variant="outline"
-        disabled={isUploading}
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
+    <div>
+      <CategoryToggle value={category} onChange={setCategory} />
+      <div
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          onDrop(e.dataTransfer.files);
+        }}
+        className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-[var(--neutral-300)] transition-colors"
       >
-        {isUploading ? "Uploading..." : "Select File"}
-      </Button>
+        <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground mb-2">
+          {category === "charitable" ? "Drag and drop a charitable donation receipt here" : "Drag and drop a medical receipt here"}
+        </p>
+        <p className="text-sm text-[var(--neutral-400)] mb-4">or</p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf"
+          onChange={handleFileInput}
+          className="hidden"
+        />
+        <Button
+          variant="outline"
+          disabled={isUploading}
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {isUploading ? "Uploading..." : "Select File"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -90,10 +129,30 @@ function ReviewStep() {
     setParseDuplicateInfo,
     isParsing,
     setError,
+    category,
+    setCategory,
+    editedExpense,
+    editedCharitableData,
+    setEditedExpense,
+    setEditedCharitableData,
+    reset,
   } = useReceiptStore();
 
-  const [editedExpense, setEditedExpense] = useState(parsedData?.expense);
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+
+
+
+  useEffect(() => {
+    if (parsedData?.expense) {
+      setEditedExpense(parsedData.expense);
+    }
+  }, [parsedData?.expense, setEditedExpense]);
+
+  useEffect(() => {
+    if (parsedData?.charitable_data) {
+      setEditedCharitableData(parsedData.charitable_data);
+    }
+  }, [parsedData?.charitable_data, setEditedCharitableData]);
 
   const handleParse = async () => {
     if (!tempFilePath) return;
@@ -109,7 +168,6 @@ function ReviewStep() {
         result.duplicate_info || [],
         result.duplicate_check_error
       );
-      setEditedExpense(result.parsed_data.expense);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Parsing failed");
     } finally {
@@ -129,8 +187,9 @@ function ReviewStep() {
 
   const needsReview = parsedData.confidence < 0.85;
 
-  const hasCoreFieldChanges =
+  const hasExpenseChanges =
     !!editedExpense &&
+    parsedData.expense &&
     (
       editedExpense.provider !== parsedData.expense.provider ||
       editedExpense.service_date !== parsedData.expense.service_date ||
@@ -138,12 +197,25 @@ function ReviewStep() {
       editedExpense.hsa_eligible !== parsedData.expense.hsa_eligible
     );
 
+  const hasCharitableChanges =
+    !!editedCharitableData &&
+    parsedData.charitable_data &&
+    (
+      editedCharitableData.organization_name !== parsedData.charitable_data.organization_name ||
+      editedCharitableData.amount !== parsedData.charitable_data.amount ||
+      editedCharitableData.donation_date !== parsedData.charitable_data.donation_date ||
+      editedCharitableData.tax_deductible !== parsedData.charitable_data.tax_deductible
+    );
+
+  const hasCoreFieldChanges = category === "hsa" ? hasExpenseChanges : hasCharitableChanges;
+
   const handleContinue = async () => {
-    if (!editedExpense) return;
+    if (category === "hsa" && !editedExpense) return;
+    if (category === "charitable" && !editedCharitableData) return;
 
     setIsCheckingDuplicates(true);
     try {
-      if (editedExpense.hsa_eligible) {
+      if (category === "hsa" && editedExpense && editedExpense.hsa_eligible) {
         const duplicateResult = await checkReceiptDuplicate(editedExpense);
         setParseDuplicateInfo(
           Boolean(duplicateResult.is_duplicate),
@@ -156,14 +228,18 @@ function ReviewStep() {
 
       setParsedData({
         ...parsedData,
-        expense: editedExpense,
+        suggested_category: category,
+        expense: category === "hsa" ? editedExpense : undefined,
+        charitable_data: category === "charitable" ? editedCharitableData : undefined,
       });
       setStep("confirm");
     } catch {
       setParseDuplicateInfo(false, [], "Duplicate check unavailable. You can still continue and final duplicate checks will run on save.");
       setParsedData({
         ...parsedData,
-        expense: editedExpense,
+        suggested_category: category,
+        expense: category === "hsa" ? editedExpense : undefined,
+        charitable_data: category === "charitable" ? editedCharitableData : undefined,
       });
       setStep("confirm");
     } finally {
@@ -173,116 +249,42 @@ function ReviewStep() {
 
   return (
     <div className="space-y-4">
+      <CategoryToggle value={category} onChange={setCategory} />
+
       <div className="flex items-center gap-2 mb-4">
-        <Badge variant={needsReview ? "destructive" : "default"}>
-          Confidence: {Math.round(parsedData.confidence * 100)}%
-        </Badge>
-        {needsReview && (
-          <span className="text-sm text-[var(--error-600)]">Review recommended</span>
-        )}
+        <ConfidenceBadge 
+          confidence={Math.round(parsedData.confidence * 100)} 
+          showHelperText 
+        />
       </div>
 
       {parseIsDuplicate && (
-        <div className="mb-4 p-4 bg-[var(--warning-50)] border border-[var(--warning-200)] rounded-lg space-y-3">
-          <div className="flex items-center gap-2 text-[var(--warning-800)] font-medium">
-            <AlertCircle className="w-5 h-5" />
-            <span>
-              Potential Duplicate{(parseDuplicateInfo?.length || 0) === 1 ? "" : "s"} Found During Scan
-            </span>
-          </div>
-          <p className="text-sm text-[var(--warning-700)]">
-            This is flagged before save so you can review now. You can still choose to import later.
-          </p>
-          {parseDuplicateInfo && parseDuplicateInfo.length > 0 ? (
-            <div className="space-y-2">
-              {parseDuplicateInfo.map((dup, idx) => (
-                <div key={idx} className="p-3 bg-white rounded border border-[var(--warning-200)] text-sm">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><span className="text-muted-foreground">Provider:</span> {dup.provider}</div>
-                    <div><span className="text-muted-foreground">Amount:</span> ${dup.amount.toFixed(2)}</div>
-                    <div><span className="text-muted-foreground">Date:</span> {dup.service_date || "N/A"}</div>
-                    <div><span className="text-muted-foreground">Status:</span> {dup.status}</div>
-                  </div>
-                  {dup.message && (
-                    <div className="mt-1 text-sm text-[var(--warning-700)]">{dup.message}</div>
-                  )}
-                  <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--warning-700)]">
-              Duplicate pattern detected but matching row details were not returned.
-            </p>
-          )}
-        </div>
+        <DuplicateInfoPanel
+          duplicateInfo={parseDuplicateInfo || []}
+          title={`Potential Duplicate${(parseDuplicateInfo?.length || 0) === 1 ? "" : "s"} Found During Scan`}
+          description="This is flagged before save so you can review now. You can still choose to import later."
+        />
       )}
 
       {parseDuplicateCheckError && (
-        <div className="mb-4 p-3 bg-[var(--warning-50)] border border-[var(--warning-200)] rounded-lg text-sm text-[var(--warning-700)]">
-          {parseDuplicateCheckError}
-        </div>
+        <WarningPanel>{parseDuplicateCheckError}</WarningPanel>
       )}
 
-      <div className="space-y-3">
-        <div>
-          <label className="text-sm font-medium text-foreground">Provider</label>
-          <Input
-            value={editedExpense?.provider || ""}
-            onChange={(e) => setEditedExpense(prev => prev ? { ...prev, provider: e.target.value } : undefined)}
-            className={needsReview ? "border-[var(--brand-400)]" : ""}
-          />
-        </div>
+      {category === "hsa" && editedExpense && (
+        <ExpenseEditor
+          expense={editedExpense}
+          onChange={(next) => setEditedExpense(next)}
+          needsReview={needsReview}
+        />
+      )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-medium text-foreground">Amount</label>
-            <Input
-              type="number"
-              step="0.01"
-              value={editedExpense?.amount || ""}
-              onChange={(e) =>
-                setEditedExpense((prev) => {
-                  if (!prev) return undefined;
-                  const parsed = Number.parseFloat(e.target.value);
-                  return { ...prev, amount: Number.isFinite(parsed) ? parsed : 0 };
-                })
-              }
-              className={needsReview ? "border-[var(--brand-400)]" : ""}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">Service Date</label>
-            <Input
-              type="date"
-              value={editedExpense?.service_date || ""}
-              onChange={(e) => setEditedExpense(prev => prev ? { ...prev, service_date: e.target.value } : undefined)}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-foreground">HSA Eligible</label>
-          <div className="flex gap-4 mt-1">
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={editedExpense?.hsa_eligible === true}
-                onChange={() => setEditedExpense(prev => prev ? { ...prev, hsa_eligible: true } : undefined)}
-              />
-              Yes
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={editedExpense?.hsa_eligible === false}
-                onChange={() => setEditedExpense(prev => prev ? { ...prev, hsa_eligible: false } : undefined)}
-              />
-              No
-            </label>
-          </div>
-        </div>
-      </div>
+      {category === "charitable" && editedCharitableData && (
+        <CharitableExpenseEditor
+          donation={editedCharitableData}
+          onChange={(next) => setEditedCharitableData(next)}
+          needsReview={needsReview}
+        />
+      )}
 
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={() => setStep("upload")}>
@@ -297,13 +299,31 @@ function ReviewStep() {
             : "Continue"}
         </Button>
       </div>
+
+      <div className="pt-2 text-center">
+        <button
+          onClick={() => {
+            reset();
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground underline"
+          type="button"
+        >
+          Cancel and start over
+        </button>
+      </div>
     </div>
   );
 }
 
 function ConfirmStep() {
-  const { tempFilePath, parsedData, setStep, setError } = useReceiptStore();
+  const { tempFilePath, parsedData, setStep, setError, reset, category } = useReceiptStore();
   const [status, setStatus] = useState<ReimbursementStatus>("unreimbursed");
+
+  useEffect(() => {
+    if (parsedData?.expense) {
+      setStatus(parsedData.expense.hsa_eligible === false ? "not_hsa_eligible" : "unreimbursed");
+    }
+  }, [parsedData?.expense]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateInfo, setDuplicateInfo] = useState<DuplicateInfo[] | null>(null);
   const [forceImport, setForceImport] = useState(false);
@@ -324,8 +344,10 @@ function ConfirmStep() {
     try {
       const result = await confirmReceipt({
         temp_file_path: tempFilePath,
-        expense_data: parsedData.expense,
-        status,
+        category,
+        expense_data: category === "hsa" ? parsedData.expense : undefined,
+        charitable_data: category === "charitable" ? parsedData.charitable_data : undefined,
+        status: category === "hsa" ? status : undefined,
         force: forceImport,
       });
 
@@ -368,105 +390,51 @@ function ConfirmStep() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>
-
-      <div className="space-y-2">
-        <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-          <input
-            type="radio"
-            name="status"
-            value="reimbursed"
-            checked={status === "reimbursed"}
-            onChange={(e) => setStatus(e.target.value as ReimbursementStatus)}
+      {category === "charitable" ? (
+        <div className="p-4 bg-secondary rounded-lg">
+          <p className="text-sm text-muted-foreground mb-2">Charitable donations are automatically tracked in your donation ledger.</p>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">Select the reimbursement status:</p>
+          <ReimbursementStatusSelector
+            status={status}
+            onChange={setStatus}
+            radioName="status"
           />
-          <div>
-            <p className="font-medium">Already Reimbursed</p>
-            <p className="text-sm text-muted-foreground">I&apos;ve already been paid back from my HSA</p>
-          </div>
-        </label>
-
-        <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-          <input
-            type="radio"
-            name="status"
-            value="unreimbursed"
-            checked={status === "unreimbursed"}
-            onChange={(e) => setStatus(e.target.value as ReimbursementStatus)}
-          />
-          <div>
-            <p className="font-medium">Save for Future</p>
-            <p className="text-sm text-muted-foreground">Track this expense for future reimbursement</p>
-          </div>
-        </label>
-
-        <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-          <input
-            type="radio"
-            name="status"
-            value="not_hsa_eligible"
-            checked={status === "not_hsa_eligible"}
-            onChange={(e) => setStatus(e.target.value as ReimbursementStatus)}
-          />
-          <div>
-            <p className="font-medium">Not HSA Eligible</p>
-            <p className="text-sm text-muted-foreground">This expense doesn&apos;t qualify for HSA</p>
-          </div>
-        </label>
-      </div>
+        </>
+      )}
 
       {showTaskStatus && (
         <div className="space-y-2 rounded-lg border border-border bg-card p-3">
           <TaskStatusRow label="Uploading receipt to Google Drive" status={driveStatus} />
-          <TaskStatusRow label="Updating Google Sheet ledger" status={sheetStatus} />
+          {category === "hsa" && <TaskStatusRow label="Updating Google Sheet ledger" status={sheetStatus} />}
+          {category === "charitable" && <TaskStatusRow label="Updating charitable donation ledger" status={sheetStatus} />}
         </div>
       )}
 
       {duplicateInfo !== null && (
-        <div className="p-4 bg-[var(--warning-50)] border border-[var(--warning-200)] rounded-lg space-y-3">
-          <div className="flex items-center gap-2 text-[var(--warning-800)] font-medium">
-            <AlertCircle className="w-5 h-5" />
-            <span>Potential Duplicate{duplicateInfo.length === 1 ? "" : "s"} Found</span>
-          </div>
-          <p className="text-sm text-[var(--warning-700)]">
-            This receipt appears to match existing entries in your ledger.
-          </p>
-
-          {duplicateInfo.length > 0 ? (
-            <div className="space-y-2">
-              {duplicateInfo.map((dup, idx) => (
-                <div key={idx} className="p-3 bg-white rounded border border-[var(--warning-200)] text-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <div><span className="text-muted-foreground">Provider:</span> {dup.provider}</div>
-                  <div><span className="text-muted-foreground">Amount:</span> ${dup.amount.toFixed(2)}</div>
-                  <div><span className="text-muted-foreground">Date:</span> {dup.service_date || "N/A"}</div>
-                  <div><span className="text-muted-foreground">Status:</span> {dup.status}</div>
-                </div>
-                {dup.message && (
-                  <div className="mt-1 text-sm text-[var(--warning-700)]">{dup.message}</div>
-                )}
-                <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
-              </div>
-            ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--warning-700)]">
-              Duplicate was detected but exact matching rows were not returned.
-            </p>
-          )}
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={forceImport}
-              onChange={(e) => setForceImport(e.target.checked)}
-            />
-            <span className="text-[var(--warning-800)]">I understand - import anyway</span>
-          </label>
-        </div>
+        <DuplicateInfoPanel
+          duplicateInfo={duplicateInfo}
+          forceImport={forceImport}
+          onForceImportChange={setForceImport}
+        />
       )}
 
       <div className="flex justify-between pt-4">
-        <Button variant="outline" onClick={() => setStep("review")} disabled={isSubmitting}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setStep("review");
+            setError(undefined);
+            setDuplicateInfo(null);
+            setForceImport(false);
+            setShowTaskStatus(false);
+            setDriveStatus("pending");
+            setSheetStatus("pending");
+          }}
+          disabled={isSubmitting}
+        >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
@@ -474,52 +442,40 @@ function ConfirmStep() {
           {isSubmitting ? "Saving..." : duplicateInfo ? "Import Anyway" : "Confirm & Save"}
         </Button>
       </div>
-    </div>
-  );
-}
 
-function TaskStatusRow({
-  label,
-  status,
-}: {
-  label: string;
-  status: "pending" | "loading" | "success" | "error";
-}) {
-  let icon = <Circle className="h-4 w-4 text-[var(--neutral-400)]" />;
-  let tone = "text-muted-foreground";
-
-  if (status === "loading") {
-    icon = <Loader2 className="h-4 w-4 animate-spin text-[var(--neutral-500)]" />;
-    tone = "text-foreground";
-  } else if (status === "success") {
-    icon = <CheckCircle className="h-4 w-4 text-[var(--success-600)]" />;
-    tone = "text-foreground";
-  } else if (status === "error") {
-    icon = <AlertCircle className="h-4 w-4 text-[var(--error-600)]" />;
-    tone = "text-[var(--error-700)]";
-  }
-
-  return (
-    <div className={`flex items-center gap-2 text-sm ${tone}`}>
-      {icon}
-      <span>{label}</span>
+      <div className="pt-2 text-center">
+        <button
+          onClick={() => {
+            reset();
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground underline"
+          type="button"
+        >
+          Cancel and start over
+        </button>
+      </div>
     </div>
   );
 }
 
 function SuccessStep() {
   const { reset } = useReceiptStore();
+  const category = useReceiptStore((state) => state.category);
 
   return (
-    <div className="text-center py-8">
-      <CheckCircle className="w-16 h-16 text-[var(--success-500)] mx-auto mb-4" />
-      <h3 className="text-lg font-semibold mb-2">Receipt Saved!</h3>
-      <p className="text-muted-foreground mb-6">Your receipt has been processed and saved.</p>
+    <SuccessState
+      title="Receipt Saved!"
+      description="Your receipt has been processed and saved."
+    >
       <div className="flex gap-3 justify-center">
         <Button variant="outline" onClick={() => reset()}>Upload Another</Button>
-        <Link href="/hsa"><Button>View HSA Dashboard</Button></Link>
+        {category === "charitable" ? (
+          <Link href="/donations"><Button>View Donations Dashboard</Button></Link>
+        ) : (
+          <Link href="/hsa"><Button>View HSA Dashboard</Button></Link>
+        )}
       </div>
-    </div>
+    </SuccessState>
   );
 }
 
@@ -607,17 +563,11 @@ export default function ReceiptsPage() {
             <ModeSwitcher mode={mode} onChange={handleModeChange} />
 
             {mode === "single" && receipt.error && (
-              <div className="mb-4 p-3 bg-[var(--error-50)] border border-[var(--error-200)] rounded-lg flex items-center gap-2 text-[var(--error-700)]">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm">{receipt.error}</span>
-              </div>
+              <ErrorPanel showIcon>{receipt.error}</ErrorPanel>
             )}
 
             {mode === "bulk" && bulkError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm">{bulkError}</span>
-              </div>
+              <ErrorPanel showIcon>{bulkError}</ErrorPanel>
             )}
 
             {mode === "single" && receipt.step === "upload" && <SingleUploadStep />}

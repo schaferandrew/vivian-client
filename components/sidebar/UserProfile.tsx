@@ -14,10 +14,10 @@ export function UserProfile({ collapsed }: UserProfileProps) {
 
   if (collapsed) {
     return (
-      <div className="p-2 border-t border-[var(--neutral-200)]">
+      <div className="border-t border-[var(--neutral-200)] p-2 dark:border-[var(--neutral-800)]">
         <button
           onClick={handleSettingsClick}
-          className="w-full p-2 flex items-center justify-center hover:bg-[var(--neutral-200)] rounded-lg transition-colors text-[var(--neutral-700)]"
+          className="flex w-full items-center justify-center rounded-lg p-2 text-[var(--neutral-700)] transition-colors hover:bg-[var(--neutral-200)] dark:text-[var(--neutral-300)] dark:hover:bg-[var(--neutral-800)]"
           title="Settings"
         >
           <Settings size={20} />
@@ -27,19 +27,19 @@ export function UserProfile({ collapsed }: UserProfileProps) {
   }
 
   return (
-    <div className="p-3 border-t border-[var(--neutral-200)]">
+    <div className="border-t border-[var(--neutral-200)] p-3 dark:border-[var(--neutral-800)]">
       <button
         onClick={handleSettingsClick}
-        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[var(--neutral-200)] rounded-lg transition-colors"
+        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-[var(--neutral-200)] dark:hover:bg-[var(--neutral-800)]"
       >
         <div className="w-8 h-8 bg-[var(--primary-600)] rounded-full flex items-center justify-center">
           <UserIcon size={16} className="text-primary-foreground" />
         </div>
         <div className="flex-1 text-left">
-          <p className="text-sm font-medium text-[var(--neutral-800)]">User</p>
-          <p className="text-xs text-[var(--neutral-500)]">View settings</p>
+          <p className="text-sm font-medium text-[var(--neutral-800)] dark:text-[var(--neutral-100)]">User</p>
+          <p className="text-xs text-[var(--neutral-500)] dark:text-[var(--neutral-400)]">View settings</p>
         </div>
-        <Settings size={18} className="text-[var(--neutral-500)]" />
+        <Settings size={18} className="text-[var(--neutral-500)] dark:text-[var(--neutral-400)]" />
       </button>
     </div>
   );

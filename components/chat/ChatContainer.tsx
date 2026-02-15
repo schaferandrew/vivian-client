@@ -1,11 +1,19 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useChatStore } from "@/lib/stores/chat";
 import { cn } from "@/lib/utils";
-import type { ChatMessage as ChatMessageType } from "@/types";
+import type { ChatMessage as ChatMessageType, ToolCallInfo } from "@/types";
+import { DocumentWorkflowCard } from "@/components/chat/DocumentWorkflowCard";
 
 import MarkdownRenderer from '../ui/MarkdownRenderer';
+
+function compactText(value: string, maxLength: number): string {
+  const singleLine = value.replace(/\s+/g, " ").trim();
+  if (singleLine.length <= maxLength) return singleLine;
+  return `${singleLine.slice(0, maxLength)}...`;
+}
 
 function formatToolValue(value: unknown): string {
   if (value === null || value === undefined) return "null";
@@ -19,45 +27,17 @@ function formatToolValue(value: unknown): string {
   }
 }
 
-function formatToolCall(
-  serverId: string,
-  toolName: string,
-  input?: string
-): string {
-  const fallback = `Tool: ${serverId}.${toolName}()`;
-  if (!input) return fallback;
-
+function formatJsonBlock(content?: string): string {
+  if (!content) return "None";
   try {
-    const parsed = JSON.parse(input);
-
-    if (
-      toolName === "add_numbers" &&
-      parsed &&
-      typeof parsed === "object" &&
-      typeof (parsed as { a?: unknown }).a === "number" &&
-      typeof (parsed as { b?: unknown }).b === "number"
-    ) {
-      const { a, b } = parsed as { a: number; b: number };
-      return `Tool: ${serverId}.${toolName}(${a} + ${b})`;
-    }
-
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const entries = Object.entries(parsed)
-        .slice(0, 4)
-        .map(([key, value]) => `${key}=${formatToolValue(value)}`);
-      const suffix = Object.keys(parsed).length > 4 ? ", ..." : "";
-      return `Tool: ${serverId}.${toolName}(${entries.join(", ")}${suffix})`;
-    }
-
-    return `Tool: ${serverId}.${toolName}(${formatToolValue(parsed)})`;
+    return JSON.stringify(JSON.parse(content), null, 2);
   } catch {
-    const compact = input.length > 140 ? `${input.slice(0, 140)}...` : input;
-    return `Tool: ${serverId}.${toolName}(${compact})`;
+    return content;
   }
 }
 
-function formatToolResult(toolName: string, output?: string): string | null {
-  if (!output) return null;
+function formatToolResultSummary(toolName: string, output?: string): string {
+  if (!output) return "Tool executed";
 
   try {
     const parsed = JSON.parse(output);
@@ -65,8 +45,24 @@ function formatToolResult(toolName: string, output?: string): string | null {
     if (toolName === "add_numbers" && parsed && typeof parsed === "object") {
       const maybeSum = (parsed as { sum?: unknown }).sum;
       if (typeof maybeSum === "number") {
-        return `Result: ${maybeSum}`;
+        return `Sum ${maybeSum}`;
       }
+    }
+
+    if (toolName === "check_for_duplicates" && parsed && typeof parsed === "object") {
+      const { is_duplicate, total_duplicates_found } = parsed as {
+        is_duplicate?: unknown;
+        total_duplicates_found?: unknown;
+      };
+      if (typeof is_duplicate === "boolean") {
+        const count =
+          typeof total_duplicates_found === "number" ? total_duplicates_found : 0;
+        if (is_duplicate) {
+          return `${count} duplicate${count === 1 ? "" : "s"} found`;
+        }
+        return "No duplicates found";
+      }
+      // If the payload does not match the expected shape, fall through to generic formatting.
     }
 
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -74,14 +70,68 @@ function formatToolResult(toolName: string, output?: string): string | null {
         .slice(0, 4)
         .map(([key, value]) => `${key}=${formatToolValue(value)}`);
       const suffix = Object.keys(parsed).length > 4 ? ", ..." : "";
-      return `Result: ${entries.join(", ")}${suffix}`;
+      return compactText(`${entries.join(", ")}${suffix}`, 160);
     }
 
-    return `Result: ${formatToolValue(parsed)}`;
+    return compactText(formatToolValue(parsed), 160);
   } catch {
-    const compact = output.length > 180 ? `${output.slice(0, 180)}...` : output;
-    return `Result: ${compact}`;
+    return compactText(output, 160);
   }
+}
+
+function CollapsibleToolResult({ tool }: { tool: ToolCallInfo }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const summary = formatToolResultSummary(tool.tool_name, tool.output);
+  
+  return (
+    <div className="rounded-md border border-border/70 bg-background/40 text-xs">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex w-full items-center justify-between gap-3 p-2 text-left hover:bg-muted/30 transition-colors"
+        type="button"
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          {isExpanded ? (
+            <ChevronUp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
+          <span className="font-mono text-[11px] text-foreground">{tool.tool_name}</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+            {tool.server_id}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1 text-right text-[11px] text-muted-foreground">
+          <span className="block truncate">{summary}</span>
+        </div>
+      </button>
+      
+      {isExpanded && (
+        <div className="space-y-2 border-t border-border/70 px-2 pb-2 pt-1.5">
+          <div>
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Arguments
+            </p>
+            <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[10px] font-mono text-foreground/90">
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all">
+                {formatJsonBlock(tool.input)}
+              </pre>
+            </div>
+          </div>
+          <div>
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Result
+            </p>
+            <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[10px] font-mono text-foreground/90">
+              <pre className="max-h-52 overflow-auto whitespace-pre-wrap break-all">
+                {formatJsonBlock(tool.output)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ChatMessage({ message }: { message: ChatMessageType }) {
@@ -98,20 +148,25 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
           message.role === "user"
             ? "bg-primary text-primary-foreground"
             : message.role === "system"
-            ? "bg-[var(--error-50)] text-[var(--error-800)] border border-[var(--error-200)]"
+            ? "border border-[var(--error-200)] bg-[var(--error-50)] text-[var(--error-800)] dark:border-[var(--error-700)] dark:bg-[var(--error-900)] dark:text-[var(--error-100)]"
             : "bg-secondary text-foreground"
         )}
       >
         <MarkdownRenderer content={message.content} />
+        {message.documentWorkflows && message.documentWorkflows.length > 0 && (
+          <div className="mt-3 space-y-3">
+            {message.documentWorkflows.map((workflow) => (
+              <DocumentWorkflowCard key={workflow.workflow_id} workflow={workflow} />
+            ))}
+          </div>
+        )}
         {message.role === "agent" && message.toolsCalled && message.toolsCalled.length > 0 && (
           <div className="mt-2 space-y-1 border-t border-border/50 pt-2">
             {message.toolsCalled.map((tool, idx) => (
-              <div key={`${tool.server_id}-${tool.tool_name}-${idx}`} className="text-xs italic text-muted-foreground">
-                <p>{formatToolCall(tool.server_id, tool.tool_name, tool.input)}</p>
-                {formatToolResult(tool.tool_name, tool.output) && (
-                  <p>{formatToolResult(tool.tool_name, tool.output)}</p>
-                )}
-              </div>
+              <CollapsibleToolResult
+                key={`${tool.server_id}-${tool.tool_name}-${idx}`}
+                tool={tool}
+              />
             ))}
           </div>
         )}

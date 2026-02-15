@@ -20,7 +20,7 @@ import {
   ChevronUp,
   Save,
 } from "lucide-react";
-import type { BulkImportFileResult, DuplicateInfo, ReimbursementStatus } from "@/types";
+import type { BulkImportConfirmItem, BulkImportFileResult, DuplicateInfo, ExpenseCategory, ReimbursementStatus } from "@/types";
 
 function UploadStep() {
   const { setStep, setError, setIsScanning, setScanningProgress, setResults, setSummary } =
@@ -162,10 +162,10 @@ function DuplicateDetailPanel({ duplicates }: { duplicates: DuplicateInfo[] }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+    <div className="mt-2 rounded-md border border-[var(--warning-200)] bg-[var(--warning-50)] p-3 dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 text-sm font-medium text-amber-800 w-full"
+        className="flex w-full items-center gap-2 text-sm font-medium text-[var(--warning-800)] dark:text-[var(--warning-200)]"
       >
         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         <AlertTriangle className="w-4 h-4" />
@@ -175,30 +175,39 @@ function DuplicateDetailPanel({ duplicates }: { duplicates: DuplicateInfo[] }) {
       {expanded && (
         <div className="mt-3 space-y-3">
           {duplicates.map((dup, idx) => (
-            <div key={idx} className="p-2 bg-white rounded border border-amber-200 text-sm">
+            <div
+              key={idx}
+              className="rounded border border-[var(--warning-200)] bg-background p-2 text-sm dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/30"
+            >
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-muted-foreground">Provider:</span> {dup.provider}
-                </div>
+                {dup.provider && (
+                  <div>
+                    <span className="text-muted-foreground">Provider:</span> {dup.provider}
+                  </div>
+                )}
                 <div>
                   <span className="text-muted-foreground">Amount:</span> ${dup.amount.toFixed(2)}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Date:</span> {dup.service_date || "N/A"}
+                  <span className="text-muted-foreground">Date:</span> {dup.date || "N/A"}
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Status:</span> {dup.status}
-                </div>
+                {dup.status && (
+                  <div>
+                    <span className="text-muted-foreground">Status:</span> {dup.status}
+                  </div>
+                )}
               </div>
               {dup.days_difference !== undefined && dup.days_difference !== null && (
-                <div className="mt-1 text-amber-700">
+                <div className="mt-1 text-[var(--warning-700)] dark:text-[var(--warning-300)]">
                   {dup.days_difference} day{dup.days_difference !== 1 ? "s" : ""} difference
                 </div>
               )}
               {dup.message && (
-                <div className="mt-1 text-amber-700">{dup.message}</div>
+                <div className="mt-1 text-[var(--warning-700)] dark:text-[var(--warning-300)]">{dup.message}</div>
               )}
-              <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
+              {dup.entry_id && (
+                <div className="mt-1 text-xs text-muted-foreground">Entry ID: {dup.entry_id}</div>
+              )}
             </div>
           ))}
         </div>
@@ -215,6 +224,7 @@ function ReceiptRow({
   defaultStatusLabel,
   onToggle,
   onStatusOverrideChange,
+  onCategoryChange,
 }: {
   result: BulkImportFileResult;
   isSelected: boolean;
@@ -223,6 +233,7 @@ function ReceiptRow({
   defaultStatusLabel: string;
   onToggle: () => void;
   onStatusOverrideChange?: (next: ReimbursementStatus | "default") => void;
+  onCategoryChange?: (next: ExpenseCategory) => void;
 }) {
   const canSelect =
     result.status === "new" ||
@@ -230,14 +241,55 @@ function ReceiptRow({
     (allowDuplicateSelection &&
       (result.status === "duplicate_exact" || result.status === "duplicate_fuzzy"));
 
+  const isCharitable = result.category === "charitable";
+
   const badge = {
-    new: <Badge className="bg-green-100 text-green-800">New</Badge>,
-    duplicate_exact: <Badge className="bg-amber-100 text-amber-800">Duplicate (Exact)</Badge>,
-    duplicate_fuzzy: <Badge className="bg-orange-100 text-orange-800">Duplicate (Fuzzy)</Badge>,
-    flagged: <Badge className="bg-yellow-100 text-yellow-800">Flagged</Badge>,
-    failed: <Badge className="bg-red-100 text-red-800">Failed</Badge>,
-    skipped: <Badge className="bg-gray-100 text-gray-800">Skipped</Badge>,
+    new: (
+      <Badge className="bg-[var(--success-100)] text-[var(--success-800)] dark:bg-[var(--success-900)] dark:text-[var(--success-100)]">
+        New
+      </Badge>
+    ),
+    duplicate_exact: (
+      <Badge className="bg-[var(--warning-100)] text-[var(--warning-800)] dark:bg-[var(--warning-900)] dark:text-[var(--warning-100)]">
+        Duplicate (Exact)
+      </Badge>
+    ),
+    duplicate_fuzzy: (
+      <Badge className="bg-[var(--brand-100)] text-[var(--brand-800)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-100)]">
+        Duplicate (Fuzzy)
+      </Badge>
+    ),
+    flagged: (
+      <Badge className="bg-[var(--warning-100)] text-[var(--warning-800)] dark:bg-[var(--warning-900)] dark:text-[var(--warning-100)]">
+        Flagged
+      </Badge>
+    ),
+    failed: (
+      <Badge className="bg-[var(--error-100)] text-[var(--error-800)] dark:bg-[var(--error-900)] dark:text-[var(--error-100)]">
+        Failed
+      </Badge>
+    ),
+    skipped: (
+      <Badge className="bg-[var(--neutral-100)] text-[var(--neutral-800)] dark:bg-[var(--neutral-800)] dark:text-[var(--neutral-100)]">
+        Skipped
+      </Badge>
+    ),
   }[result.status];
+
+  const categoryBadge = onCategoryChange ? (
+    <select
+      className="h-6 rounded border border-input bg-background px-1 text-xs font-medium"
+      value={result.category || "hsa"}
+      onChange={(e) => onCategoryChange(e.target.value as ExpenseCategory)}
+    >
+      <option value="hsa">HSA</option>
+      <option value="charitable">Charitable</option>
+    </select>
+  ) : isCharitable ? (
+    <Badge className="bg-[var(--brand-100)] text-[var(--brand-800)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-100)]">Charitable</Badge>
+  ) : (
+    <Badge className="bg-[var(--primary-100)] text-[var(--primary-800)] dark:bg-[var(--primary-900)] dark:text-[var(--primary-100)]">HSA</Badge>
+  );
 
   return (
     <div className="p-4 border-b border-border last:border-0">
@@ -246,10 +298,11 @@ function ReceiptRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {badge}
+            {categoryBadge}
             <span className="font-medium truncate">{result.filename}</span>
           </div>
 
-          {result.expense && (
+          {result.expense && !isCharitable && (
             <div className="mt-2 grid grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Provider:</span> {result.expense.provider}
@@ -263,15 +316,29 @@ function ReceiptRow({
             </div>
           )}
 
+          {result.charitable_data && isCharitable && (
+            <div className="mt-2 grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Organization:</span> {result.charitable_data.organization_name}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Date:</span> {result.charitable_data.donation_date || "N/A"}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Amount:</span> ${result.charitable_data.amount.toFixed(2)}
+              </div>
+            </div>
+          )}
+
           {result.warnings && result.warnings.length > 0 && (
-            <div className="mt-2 flex items-center gap-1 text-sm text-yellow-700">
+            <div className="mt-2 flex items-center gap-1 text-sm text-[var(--warning-700)] dark:text-[var(--warning-300)]">
               <AlertTriangle className="w-4 h-4" />
               {result.warnings.join(", ")}
             </div>
           )}
 
           {result.error && (
-            <div className="mt-2 flex items-center gap-1 text-sm text-red-600">
+            <div className="mt-2 flex items-center gap-1 text-sm text-[var(--error-600)] dark:text-[var(--error-400)]">
               <X className="w-4 h-4" />
               {result.error}
             </div>
@@ -281,7 +348,7 @@ function ReceiptRow({
             <DuplicateDetailPanel duplicates={result.duplicate_info} />
           )}
 
-          {canSelect && isSelected && onStatusOverrideChange && (
+          {canSelect && isSelected && onStatusOverrideChange && !isCharitable && (
             <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">
               <p className="text-xs text-muted-foreground">
                 Status for this receipt:
@@ -304,9 +371,49 @@ function ReceiptRow({
 }
 
 function ReviewStep() {
-  const { results, summary, selectedIds, options, setOptions, toggleSelection, selectAll, deselectAll, setStep } =
+  const { results, summary, selectedIds, options, setOptions, toggleSelection, selectAll, deselectAll, setStep, updateResult } =
     useBulkImportStore();
   const globalStatusLabel = options.statusOverride === "reimbursed" ? "Already Reimbursed" : "Save for Future";
+
+  const allResults = [...results.new, ...results.flagged, ...results.duplicates];
+  const hasCharitable = allResults.some((r) => r.category === "charitable");
+  const hasHsa = allResults.some((r) => r.category !== "charitable");
+
+  const handleCategoryChange = (result: BulkImportFileResult, next: ExpenseCategory) => {
+    if (!result.temp_file_path || result.category === next) return;
+    if (next === "charitable") {
+      // Switching HSA -> Charitable: map expense fields to charitable_data
+      const exp = result.expense;
+      updateResult(result.temp_file_path, {
+        category: "charitable",
+        charitable_data: result.charitable_data ?? (exp ? {
+          organization_name: exp.provider || "Unknown Organization",
+          donation_date: exp.service_date,
+          amount: exp.amount,
+          tax_deductible: true,
+        } : undefined),
+        expense: undefined,
+        // Clear stale duplicate info from the old category
+        duplicate_info: undefined,
+        status: result.status === "duplicate_exact" || result.status === "duplicate_fuzzy" ? "flagged" as const : result.status,
+      });
+    } else {
+      // Switching Charitable -> HSA: map charitable_data fields to expense
+      const don = result.charitable_data;
+      updateResult(result.temp_file_path, {
+        category: "hsa",
+        expense: result.expense ?? (don ? {
+          provider: don.organization_name || "Unknown Provider",
+          service_date: don.donation_date,
+          amount: don.amount,
+          hsa_eligible: true,
+        } : undefined),
+        charitable_data: undefined,
+        duplicate_info: undefined,
+        status: result.status === "duplicate_exact" || result.status === "duplicate_fuzzy" ? "flagged" as const : result.status,
+      });
+    }
+  };
 
   const handleToggle = (tempPath: string) => {
     const isCurrentlySelected = selectedIds.has(tempPath);
@@ -324,19 +431,19 @@ function ReviewStep() {
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{summary.new_count}</div>
+            <div className="text-2xl font-bold text-[var(--success-600)] dark:text-[var(--success-300)]">{summary.new_count}</div>
             <div className="text-sm text-muted-foreground">New</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-amber-600">{summary.duplicate_count}</div>
+            <div className="text-2xl font-bold text-[var(--warning-600)] dark:text-[var(--warning-300)]">{summary.duplicate_count}</div>
             <div className="text-sm text-muted-foreground">Duplicates</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-600">{summary.flagged_count}</div>
+            <div className="text-2xl font-bold text-[var(--warning-600)] dark:text-[var(--warning-300)]">{summary.flagged_count}</div>
             <div className="text-sm text-muted-foreground">Flagged</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">{summary.failed_count}</div>
+            <div className="text-2xl font-bold text-[var(--error-600)] dark:text-[var(--error-400)]">{summary.failed_count}</div>
             <div className="text-sm text-muted-foreground">Failed</div>
           </div>
         </div>
@@ -366,7 +473,7 @@ function ReviewStep() {
         <div className="text-sm text-muted-foreground">{selectedIds.size} selected</div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-[var(--warning-700)] bg-[var(--warning-50)] border border-[var(--warning-200)] rounded-md px-3 py-2">
+      <label className="flex items-center gap-2 rounded-md border border-[var(--warning-200)] bg-[var(--warning-50)] px-3 py-2 text-sm text-[var(--warning-700)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20 dark:text-[var(--warning-300)]">
         <Checkbox
           checked={options.forceImportDuplicates}
           onCheckedChange={(checked) => {
@@ -384,42 +491,51 @@ function ReviewStep() {
         <span>Allow selecting potential duplicates (override during import)</span>
       </label>
 
-      <div className="rounded-lg border border-border p-4 space-y-3">
-        <p className="text-sm text-muted-foreground">Default reimbursement status for selected receipts:</p>
-        <div className="space-y-2">
-          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-            <input
-              type="radio"
-              name="bulk-status"
-              value="reimbursed"
-              checked={options.statusOverride === "reimbursed"}
-              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
-            />
-            <div>
-              <p className="font-medium">Already Reimbursed</p>
-              <p className="text-sm text-muted-foreground">I&apos;ve already been paid back from my HSA</p>
-            </div>
-          </label>
-          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
-            <input
-              type="radio"
-              name="bulk-status"
-              value="unreimbursed"
-              checked={options.statusOverride === "unreimbursed"}
-              onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
-            />
-            <div>
-              <p className="font-medium">Save for Future</p>
-              <p className="text-sm text-muted-foreground">Track these expenses for future reimbursement</p>
-            </div>
-          </label>
+      {hasHsa && (
+        <div className="rounded-lg border border-border p-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Default reimbursement status for {hasCharitable ? "HSA" : "selected"} receipts:
+          </p>
+          {hasCharitable && (
+            <p className="text-xs text-muted-foreground">
+              Charitable donations do not have a reimbursement status and are not affected by this setting.
+            </p>
+          )}
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
+              <input
+                type="radio"
+                name="bulk-status"
+                value="reimbursed"
+                checked={options.statusOverride === "reimbursed"}
+                onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
+              />
+              <div>
+                <p className="font-medium">Already Reimbursed</p>
+                <p className="text-sm text-muted-foreground">I&apos;ve already been paid back from my HSA</p>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-secondary">
+              <input
+                type="radio"
+                name="bulk-status"
+                value="unreimbursed"
+                checked={options.statusOverride === "unreimbursed"}
+                onChange={(e) => setOptions({ statusOverride: e.target.value as ReimbursementStatus })}
+              />
+              <div>
+                <p className="font-medium">Save for Future</p>
+                <p className="text-sm text-muted-foreground">Track these expenses for future reimbursement</p>
+              </div>
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="space-y-4 max-h-[500px] overflow-y-auto border rounded-lg">
         {results.new.length > 0 && (
           <div>
-            <div className="px-4 py-2 bg-green-50 border-b border-green-200 font-medium text-green-800">
+            <div className="border-b border-[var(--success-200)] bg-[var(--success-50)] px-4 py-2 font-medium text-[var(--success-800)] dark:border-[var(--success-800)] dark:bg-[var(--success-900)]/20 dark:text-[var(--success-200)]">
               New Receipts ({results.new.length})
             </div>
             {results.new.map((result, idx) => (
@@ -444,6 +560,7 @@ function ReviewStep() {
                     },
                   });
                 }}
+                onCategoryChange={(next) => handleCategoryChange(result, next)}
               />
             ))}
           </div>
@@ -451,7 +568,7 @@ function ReviewStep() {
 
         {results.duplicates.length > 0 && (
           <div>
-            <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 font-medium text-amber-800">
+            <div className="border-b border-[var(--warning-200)] bg-[var(--warning-50)] px-4 py-2 font-medium text-[var(--warning-800)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20 dark:text-[var(--warning-200)]">
               Potential Duplicates ({results.duplicates.length})
             </div>
             {results.duplicates.map((result, idx) => (
@@ -476,6 +593,7 @@ function ReviewStep() {
                     },
                   });
                 }}
+                onCategoryChange={(next) => handleCategoryChange(result, next)}
               />
             ))}
           </div>
@@ -483,7 +601,7 @@ function ReviewStep() {
 
         {results.flagged.length > 0 && (
           <div>
-            <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-200 font-medium text-yellow-800">
+            <div className="border-b border-[var(--warning-200)] bg-[var(--warning-50)] px-4 py-2 font-medium text-[var(--warning-800)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]/20 dark:text-[var(--warning-200)]">
               Flagged for Review ({results.flagged.length})
             </div>
             {results.flagged.map((result, idx) => (
@@ -508,6 +626,7 @@ function ReviewStep() {
                     },
                   });
                 }}
+                onCategoryChange={(next) => handleCategoryChange(result, next)}
               />
             ))}
           </div>
@@ -515,7 +634,7 @@ function ReviewStep() {
 
         {results.failed.length > 0 && (
           <div>
-            <div className="px-4 py-2 bg-red-50 border-b border-red-200 font-medium text-red-800">
+            <div className="border-b border-[var(--error-200)] bg-[var(--error-50)] px-4 py-2 font-medium text-[var(--error-800)] dark:border-[var(--error-800)] dark:bg-[var(--error-900)]/20 dark:text-[var(--error-200)]">
               Failed ({results.failed.length})
             </div>
             {results.failed.map((result, idx) => (
@@ -526,6 +645,7 @@ function ReviewStep() {
                 allowDuplicateSelection={false}
                 defaultStatusLabel={globalStatusLabel}
                 onToggle={() => {}}
+                onCategoryChange={(next) => handleCategoryChange(result, next)}
               />
             ))}
           </div>
@@ -555,18 +675,24 @@ function ConfirmStep() {
   );
   const selectedDuplicateCount = Array.from(selectedIds).filter((path) => duplicatePathSet.has(path)).length;
   const selectedRows = [...results.new, ...results.flagged, ...results.duplicates].filter(
-    (r) => r.temp_file_path && r.expense && selectedIds.has(r.temp_file_path)
+    (r) => r.temp_file_path && (r.expense || r.charitable_data) && selectedIds.has(r.temp_file_path)
   );
-  const selectedTotalAmount = selectedRows.reduce((sum, row) => sum + (row.expense?.amount || 0), 0);
+  const selectedTotalAmount = selectedRows.reduce(
+    (sum, row) => sum + (row.expense?.amount || row.charitable_data?.amount || 0),
+    0
+  );
 
   const handleImport = async () => {
-    const selectedItems = selectedRows.map((r) => {
+    const selectedItems: BulkImportConfirmItem[] = selectedRows.map((r) => {
       const tempPath = r.temp_file_path as string;
+      const isCharitable = r.category === "charitable";
       const perItemStatus = options.itemStatusOverrides[tempPath];
       return {
         temp_file_path: tempPath,
-        expense_data: r.expense!,
-        status: perItemStatus && perItemStatus !== "default" ? perItemStatus : undefined,
+        category: r.category || "hsa",
+        expense_data: isCharitable ? undefined : r.expense!,
+        charitable_data: isCharitable ? r.charitable_data! : undefined,
+        status: !isCharitable && perItemStatus && perItemStatus !== "default" ? perItemStatus : undefined,
       };
     });
 
@@ -612,7 +738,7 @@ function ConfirmStep() {
   return (
     <div className="space-y-6">
       <div className="text-center py-6">
-        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+        <CheckCircle className="mx-auto mb-4 h-12 w-12 text-[var(--success-500)] dark:text-[var(--success-300)]" />
         <h3 className="text-lg font-medium mb-2">Ready to Import</h3>
         <p className="text-muted-foreground">
           You&apos;re about to import {selectedIds.size} receipt{selectedIds.size !== 1 ? "s" : ""}
@@ -621,14 +747,14 @@ function ConfirmStep() {
 
       {selectedDuplicateCount > 0 && (
         <div className="rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-4 space-y-3">
-          <div className="flex items-center gap-2 text-[var(--warning-800)] font-medium">
+          <div className="flex items-center gap-2 font-medium text-[var(--warning-800)] dark:text-[var(--warning-200)]">
             <AlertTriangle className="w-5 h-5" />
             <span>{selectedDuplicateCount} selected duplicate{selectedDuplicateCount !== 1 ? "s" : ""}</span>
           </div>
-          <p className="text-sm text-[var(--warning-700)]">
+          <p className="text-sm text-[var(--warning-700)] dark:text-[var(--warning-300)]">
             These items were flagged as potential duplicates. You can skip them by going back, or override duplicate checks for this import.
           </p>
-          <label className="flex items-center gap-2 text-sm text-[var(--warning-800)]">
+          <label className="flex items-center gap-2 text-sm text-[var(--warning-800)] dark:text-[var(--warning-200)]">
             <Checkbox checked={forceImport} onCheckedChange={(checked) => setForceImport(Boolean(checked))} />
             <span>Import selected duplicates anyway</span>
           </label>
@@ -683,21 +809,21 @@ function ResultsStep() {
     <div className="text-center py-8 space-y-6">
       {importResults.failedCount === 0 ? (
         <>
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+          <CheckCircle className="mx-auto h-16 w-16 text-[var(--success-500)] dark:text-[var(--success-300)]" />
           <h3 className="text-xl font-semibold">Import Successful!</h3>
         </>
       ) : (
         <>
-          <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto" />
+          <AlertCircle className="mx-auto h-16 w-16 text-[var(--warning-500)] dark:text-[var(--warning-300)]" />
           <h3 className="text-xl font-semibold">Import Completed with Issues</h3>
         </>
       )}
 
       <p className="text-muted-foreground">{importResults.message}</p>
       {importResults.failures.length > 0 && (
-        <div className="max-w-2xl mx-auto text-left p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="font-medium text-red-800 mb-2">Failed files</p>
-          <div className="space-y-1 text-sm text-red-700">
+        <div className="mx-auto max-w-2xl rounded-lg border border-[var(--error-200)] bg-[var(--error-50)] p-4 text-left dark:border-[var(--error-800)] dark:bg-[var(--error-900)]/20">
+          <p className="mb-2 font-medium text-[var(--error-800)] dark:text-[var(--error-200)]">Failed files</p>
+          <div className="space-y-1 text-sm text-[var(--error-700)] dark:text-[var(--error-300)]">
             {importResults.failures.map((f, idx) => (
               <div key={`${f.filename}-${idx}`}>
                 <span className="font-medium">{f.filename}:</span> {f.error}

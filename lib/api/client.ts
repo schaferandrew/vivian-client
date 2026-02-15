@@ -1,9 +1,17 @@
 import { authenticatedFetch } from "@/lib/auth/client";
+import {
+  mcpEnabledUpdateResponseSchema,
+  mcpServerSettingsResponseSchema,
+  mcpServerSettingsUpdateResponseSchema,
+  mcpServersResponseSchema,
+} from "@/lib/schemas/mcp";
 import type {
   BulkImportConfirmItem,
   BulkImportConfirmResponse,
   BulkImportResponse,
+  CharitableDonationSchema,
   Chat,
+  ChatAttachmentInput,
   ChatListResponse,
   ChatMessageResponse,
   ChatWithMessages,
@@ -49,6 +57,18 @@ function getMessageFromPayload(payload: unknown): string | null {
   return typeof candidate === "string" ? candidate : null;
 }
 
+function getErrorCodeFromPayload(payload: unknown): string | null {
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  const candidate = [payload.code, payload.error_code, payload.error].find(
+    (value) => typeof value === "string" && value
+  );
+
+  return typeof candidate === "string" ? candidate : null;
+}
+
 async function parseResponsePayload(response: Response): Promise<unknown> {
   if (response.status === 204 || response.status === 205) {
     return null;
@@ -64,11 +84,27 @@ async function parseResponsePayload(response: Response): Promise<unknown> {
 }
 
 function buildApiError(response: Response, payload: unknown): ApiError {
-  const message =
-    getMessageFromPayload(payload) ?? `API Error: ${response.status} ${response.statusText}`;
+  const errorCode = getErrorCodeFromPayload(payload);
+  const rawMessage = getMessageFromPayload(payload);
+  const defaultMessage = `API Error: ${response.status} ${response.statusText}`;
+  let message = rawMessage ?? defaultMessage;
+
+  if (message === "server_error" || errorCode === "server_error") {
+    message = response.status >= 500
+      ? "Server error. Please try again."
+      : "Request failed. Please try again.";
+  }
+
+  if (response.status === 502 && message === defaultMessage) {
+    message = "Backend unavailable. Please try again shortly.";
+  }
+
   const error = new Error(message) as ApiError;
   error.status = response.status;
   error.data = payload;
+  if (errorCode) {
+    error.code = errorCode;
+  }
   return error;
 }
 
@@ -144,18 +180,26 @@ export async function sendChatMessage(
   sessionId: string | null,
   chatId: string | null,
   webSearchEnabled: boolean = false,
-  enabledMcpServers: string[] = []
+  enabledMcpServers?: string[],
+  attachments: ChatAttachmentInput[] = []
 ): Promise<ChatMessageResponse> {
   try {
+    const payload: Record<string, unknown> = {
+      message,
+      session_id: sessionId,
+      chat_id: chatId,
+      web_search_enabled: webSearchEnabled,
+    };
+    if (enabledMcpServers !== undefined) {
+      payload.enabled_mcp_servers = enabledMcpServers;
+    }
+    if (attachments.length > 0) {
+      payload.attachments = attachments;
+    }
+
     return await fetchProxyApi<ChatMessageResponse>("/chat/message", {
       method: "POST",
-      body: JSON.stringify({
-        message,
-        session_id: sessionId,
-        chat_id: chatId,
-        web_search_enabled: webSearchEnabled,
-        enabled_mcp_servers: enabledMcpServers,
-      }),
+      body: JSON.stringify(payload),
     });
   } catch (error) {
     const apiError = error as ApiError;
@@ -185,6 +229,24 @@ export async function sendChatMessage(
         "Model not found or unavailable.";
       const enriched = new Error(msg) as ApiError;
       enriched.code = "model_not_found";
+      throw enriched;
+    }
+
+    if (apiError.status === 504 && payload.error === "ollama_timeout") {
+      const msg =
+        (typeof payload.message === "string" && payload.message) ||
+        "Ollama timed out. The model may still be loading — try again in a moment.";
+      const enriched = new Error(msg) as ApiError;
+      enriched.code = "ollama_timeout";
+      throw enriched;
+    }
+
+    if (apiError.status === 502 && payload.error === "ollama_unavailable") {
+      const msg =
+        (typeof payload.message === "string" && payload.message) ||
+        "Could not connect to Ollama. Is it running?";
+      const enriched = new Error(msg) as ApiError;
+      enriched.code = "ollama_unavailable";
       throw enriched;
     }
 
@@ -219,6 +281,19 @@ export async function checkReceiptDuplicate(
     method: "POST",
     body: JSON.stringify({
       expense_data: expenseData,
+      fuzzy_days: fuzzyDays,
+    }),
+  });
+}
+
+export async function checkCharitableDuplicate(
+  charitableData: CharitableDonationSchema,
+  fuzzyDays: number = 3
+): Promise<CheckDuplicateResponse> {
+  return fetchDirectApi("/receipts/check-charitable-duplicate", {
+    method: "POST",
+    body: JSON.stringify({
+      charitable_data: charitableData,
       fuzzy_days: fuzzyDays,
     }),
   });
@@ -292,16 +367,18 @@ export async function generateSummary(chatId: string): Promise<GenerateSummaryRe
 }
 
 export async function getMcpServers(): Promise<MCPServersResponse> {
-  return fetchProxyApi("/mcp/servers");
+  const payload = await fetchProxyApi<unknown>("/mcp/servers");
+  return mcpServersResponseSchema.parse(payload);
 }
 
 export async function updateEnabledMcpServers(
   enabledServerIds: string[]
 ): Promise<MCPEnabledUpdateResponse> {
-  return fetchProxyApi("/mcp/servers", {
+  const payload = await fetchProxyApi<unknown>("/mcp/servers", {
     method: "POST",
     body: JSON.stringify({ enabled_server_ids: enabledServerIds }),
   });
+  return mcpEnabledUpdateResponseSchema.parse(payload);
 }
 
 export async function runMcpAdditionTest(
@@ -370,5 +447,49 @@ export async function bulkImportConfirm(
       status_override: statusOverride,
       force,
     }),
+  });
+}
+
+// MCP Server Settings API
+export async function getMcpServerSettings(
+  serverId: string
+): Promise<import("@/types").MCPServerSettingsResponse> {
+  const payload = await fetchProxyApi<unknown>(`/mcp/servers/${serverId}/settings`, {
+    method: "GET",
+  });
+  return mcpServerSettingsResponseSchema.parse(payload);
+}
+
+export async function updateMcpServerSettings(
+  serverId: string,
+  settings: Record<string, unknown>
+): Promise<{ mcp_server_id: string; settings: Record<string, unknown> }> {
+  const payload = await fetchProxyApi<unknown>(`/mcp/servers/${serverId}/settings`, {
+    method: "PATCH",
+    body: JSON.stringify({ settings }),
+  });
+  return mcpServerSettingsUpdateResponseSchema.parse(payload);
+}
+
+// Charitable donation API
+export async function getCharitableSummary(
+  taxYear?: string
+): Promise<import("@/types").CharitableSummaryResponse> {
+  const params = taxYear ? `?year=${taxYear}` : "";
+  return fetchDirectApi(`/ledger/charitable/summary${params}`, {
+    method: "GET",
+  });
+}
+
+export async function getLedgerSummary(
+  year?: number,
+  statusFilter?: string
+): Promise<import("@/types").LedgerSummaryResponse> {
+  const params = new URLSearchParams();
+  if (year) params.set("year", year.toString());
+  if (statusFilter) params.set("status_filter", statusFilter);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return fetchDirectApi(`/ledger/summary${query}`, {
+    method: "GET",
   });
 }

@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   client:
     build:
@@ -8,7 +6,12 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - NODE_ENV=development
       - NEXT_PUBLIC_AGENT_API_URL=http://host.docker.internal:8000/api/v1
       - NEXT_PUBLIC_AGENT_WS_URL=ws://host.docker.internal:8000/api/v1/chat/ws
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
     extra_hosts:
       - "host.docker.internal:host-gateway"

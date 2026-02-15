@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { ChatMessage, Chat, MCPServerInfo, ToolCallInfo } from "@/types";
+import type {
+  ChatMessage,
+  Chat,
+  MCPServerInfo,
+  ToolCallInfo,
+  DocumentWorkflowArtifact,
+} from "@/types";
 import {
   getChats,
   getChat,
@@ -30,6 +36,45 @@ function parseToolsCalled(metadata: unknown): ToolCallInfo[] {
     .filter((tool) => tool.server_id && tool.tool_name);
 }
 
+function parseDocumentWorkflows(metadata: unknown): DocumentWorkflowArtifact[] {
+  if (!metadata || typeof metadata !== "object") {
+    return [];
+  }
+
+  const rawWorkflows = (metadata as { document_workflows?: unknown }).document_workflows;
+  if (!Array.isArray(rawWorkflows)) {
+    return [];
+  }
+
+  return rawWorkflows
+    .filter((workflow): workflow is Record<string, unknown> => !!workflow && typeof workflow === "object")
+    .map((workflow) => ({
+      workflow_id: String(workflow.workflow_id ?? ""),
+      attachment_id:
+        typeof workflow.attachment_id === "string" ? workflow.attachment_id : undefined,
+      document_type: String(workflow.document_type ?? ""),
+      status: String(workflow.status ?? ""),
+      message: typeof workflow.message === "string" ? workflow.message : "",
+      temp_file_path:
+        typeof workflow.temp_file_path === "string" ? workflow.temp_file_path : undefined,
+      filename: typeof workflow.filename === "string" ? workflow.filename : undefined,
+      parsed_data:
+        workflow.parsed_data && typeof workflow.parsed_data === "object"
+          ? (workflow.parsed_data as DocumentWorkflowArtifact["parsed_data"])
+          : undefined,
+      is_duplicate:
+        typeof workflow.is_duplicate === "boolean" ? workflow.is_duplicate : undefined,
+      duplicate_info: Array.isArray(workflow.duplicate_info)
+        ? (workflow.duplicate_info as DocumentWorkflowArtifact["duplicate_info"])
+        : undefined,
+      duplicate_check_error:
+        typeof workflow.duplicate_check_error === "string"
+          ? workflow.duplicate_check_error
+          : undefined,
+    }))
+    .filter((workflow) => workflow.workflow_id && workflow.status);
+}
+
 interface ChatState {
   messages: ChatMessage[];
   chats: Chat[];
@@ -39,6 +84,8 @@ interface ChatState {
   sidebarCollapsed: boolean;
   webSearchEnabled: boolean;
   mcpServers: MCPServerInfo[];
+  /** Workflow IDs that have been successfully saved (persisted as array). */
+  completedWorkflowIds: string[];
 
   addMessage: (message: ChatMessage) => void;
   setLoading: (loading: boolean) => void;
@@ -48,6 +95,8 @@ interface ChatState {
   setMcpServerEnabled: (serverId: string, enabled: boolean) => void;
   setSessionId: (sessionId: string | null) => void;
   toggleSidebar: () => void;
+  markWorkflowCompleted: (workflowId: string) => void;
+  isWorkflowCompleted: (workflowId: string) => boolean;
 
   fetchChats: () => Promise<void>;
   fetchMcpServers: () => Promise<void>;
@@ -67,6 +116,7 @@ export const useChatStore = create<ChatState>()(
       sidebarCollapsed: false,
       webSearchEnabled: false,
       mcpServers: [],
+      completedWorkflowIds: [],
 
       addMessage: (message) =>
         set((state) => ({
@@ -90,6 +140,15 @@ export const useChatStore = create<ChatState>()(
 
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+      markWorkflowCompleted: (workflowId) =>
+        set((state) => {
+          if (state.completedWorkflowIds.includes(workflowId)) return state;
+          return { completedWorkflowIds: [...state.completedWorkflowIds, workflowId] };
+        }),
+
+      isWorkflowCompleted: (workflowId) =>
+        get().completedWorkflowIds.includes(workflowId),
 
       fetchChats: async () => {
         try {
@@ -130,6 +189,7 @@ export const useChatStore = create<ChatState>()(
               content: msg.content,
               timestamp: new Date(msg.timestamp),
               toolsCalled: parseToolsCalled(msg.metadata),
+              documentWorkflows: parseDocumentWorkflows(msg.metadata),
             }));
             set({
               currentChatId: chatId,
@@ -180,6 +240,7 @@ export const useChatStore = create<ChatState>()(
         mcpServers: state.mcpServers,
         sidebarCollapsed: state.sidebarCollapsed,
         currentChatId: state.currentChatId,
+        completedWorkflowIds: state.completedWorkflowIds,
       }),
     }
   )
