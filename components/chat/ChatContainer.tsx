@@ -148,7 +148,7 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
           message.role === "user"
             ? "bg-primary text-primary-foreground"
             : message.role === "system"
-            ? "border border-[var(--error-200)] bg-[var(--error-50)] text-[var(--error-800)] dark:border-[var(--error-700)] dark:bg-[var(--error-900)]/55 dark:text-[var(--error-100)]"
+            ? "border border-[var(--error-200)] bg-[var(--error-50)] text-[var(--error-800)] dark:border-[var(--error-700)] dark:bg-[var(--error-900)] dark:text-[var(--error-100)]"
             : "bg-secondary text-foreground"
         )}
       >
