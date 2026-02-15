@@ -97,7 +97,7 @@ export function ModelSelector() {
 
             {ollamaStatus === "offline" && (
               <div className="flex items-center gap-2 border-b border-[var(--brand-100)] bg-[var(--brand-50)] px-3 py-2 text-xs text-[var(--brand-800)] dark:border-[var(--brand-800)] dark:bg-[var(--brand-900)]/25 dark:text-[var(--brand-200)]">
-                <AlertCircle className="w-3 h-3" />
+                <AlertCircle className="w-3 h-3 dark:text-[var(--brand-200)]" />
                 Ollama is offline - Local models unavailable
               </div>
             )}
