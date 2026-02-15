@@ -9,6 +9,12 @@ import { DocumentWorkflowCard } from "@/components/chat/DocumentWorkflowCard";
 
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 
+function compactText(value: string, maxLength: number): string {
+  const singleLine = value.replace(/\s+/g, " ").trim();
+  if (singleLine.length <= maxLength) return singleLine;
+  return `${singleLine.slice(0, maxLength)}...`;
+}
+
 function formatToolValue(value: unknown): string {
   if (value === null || value === undefined) return "null";
   if (typeof value === "string") return JSON.stringify(value);
@@ -21,45 +27,17 @@ function formatToolValue(value: unknown): string {
   }
 }
 
-function formatToolCall(
-  serverId: string,
-  toolName: string,
-  input?: string
-): string {
-  const fallback = `Tool: ${serverId}.${toolName}()`;
-  if (!input) return fallback;
-
+function formatJsonBlock(content?: string): string {
+  if (!content) return "None";
   try {
-    const parsed = JSON.parse(input);
-
-    if (
-      toolName === "add_numbers" &&
-      parsed &&
-      typeof parsed === "object" &&
-      typeof (parsed as { a?: unknown }).a === "number" &&
-      typeof (parsed as { b?: unknown }).b === "number"
-    ) {
-      const { a, b } = parsed as { a: number; b: number };
-      return `Tool: ${serverId}.${toolName}(${a} + ${b})`;
-    }
-
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const entries = Object.entries(parsed)
-        .slice(0, 4)
-        .map(([key, value]) => `${key}=${formatToolValue(value)}`);
-      const suffix = Object.keys(parsed).length > 4 ? ", ..." : "";
-      return `Tool: ${serverId}.${toolName}(${entries.join(", ")}${suffix})`;
-    }
-
-    return `Tool: ${serverId}.${toolName}(${formatToolValue(parsed)})`;
+    return JSON.stringify(JSON.parse(content), null, 2);
   } catch {
-    const compact = input.length > 140 ? `${input.slice(0, 140)}...` : input;
-    return `Tool: ${serverId}.${toolName}(${compact})`;
+    return content;
   }
 }
 
-function formatToolResult(toolName: string, output?: string): string | null {
-  if (!output) return null;
+function formatToolResultSummary(toolName: string, output?: string): string {
+  if (!output) return "Tool executed";
 
   try {
     const parsed = JSON.parse(output);
@@ -67,7 +45,7 @@ function formatToolResult(toolName: string, output?: string): string | null {
     if (toolName === "add_numbers" && parsed && typeof parsed === "object") {
       const maybeSum = (parsed as { sum?: unknown }).sum;
       if (typeof maybeSum === "number") {
-        return `Result: ${maybeSum}`;
+        return `Sum ${maybeSum}`;
       }
     }
 
@@ -80,9 +58,9 @@ function formatToolResult(toolName: string, output?: string): string | null {
         const count =
           typeof total_duplicates_found === "number" ? total_duplicates_found : 0;
         if (is_duplicate) {
-          return `Result: ${count} duplicate${count === 1 ? "" : "s"} found`;
+          return `${count} duplicate${count === 1 ? "" : "s"} found`;
         }
-        return "Result: No duplicates found";
+        return "No duplicates found";
       }
       // If the payload does not match the expected shape, fall through to generic formatting.
     }
@@ -92,51 +70,65 @@ function formatToolResult(toolName: string, output?: string): string | null {
         .slice(0, 4)
         .map(([key, value]) => `${key}=${formatToolValue(value)}`);
       const suffix = Object.keys(parsed).length > 4 ? ", ..." : "";
-      return `Result: ${entries.join(", ")}${suffix}`;
+      return compactText(`${entries.join(", ")}${suffix}`, 160);
     }
 
-    return `Result: ${formatToolValue(parsed)}`;
+    return compactText(formatToolValue(parsed), 160);
   } catch {
-    const compact = output.length > 180 ? `${output.slice(0, 180)}...` : output;
-    return `Result: ${compact}`;
+    return compactText(output, 160);
   }
 }
 
 function CollapsibleToolResult({ tool }: { tool: ToolCallInfo }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const summary = formatToolResult(tool.tool_name, tool.output);
-  
-  if (!summary) return null;
+  const summary = formatToolResultSummary(tool.tool_name, tool.output);
   
   return (
-    <div className="text-xs text-muted-foreground">
+    <div className="rounded-md border border-border/70 bg-background/40 text-xs">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1.5 hover:text-foreground transition-colors w-full text-left group"
+        className="flex w-full items-center justify-between gap-3 p-2 text-left hover:bg-muted/30 transition-colors"
         type="button"
       >
-        <div className="flex items-center gap-1 text-[10px] opacity-60 group-hover:opacity-100">
+        <div className="flex min-w-0 items-center gap-2">
           {isExpanded ? (
-            <ChevronUp className="w-3 h-3" />
+            <ChevronUp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           ) : (
-            <ChevronDown className="w-3 h-3" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           )}
-          <span>{isExpanded ? "Hide" : "Show"}</span>
+          <span className="font-mono text-[11px] text-foreground">{tool.tool_name}</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+            {tool.server_id}
+          </span>
         </div>
-        <span className="italic truncate flex-1">{formatToolCall(tool.server_id, tool.tool_name, tool.input)}</span>
+        <div className="min-w-0 flex-1 text-right text-[11px] text-muted-foreground">
+          <span className="block truncate">{summary}</span>
+        </div>
       </button>
       
-      {isExpanded ? (
-        <div className="mt-1.5 space-y-1.5 pl-4 border-l-2 border-border/50">
-          <p className="italic">{summary}</p>
-          {tool.output && (
-            <div className="p-2 bg-muted rounded text-[10px] font-mono overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all">{tool.output}</pre>
+      {isExpanded && (
+        <div className="space-y-2 border-t border-border/70 px-2 pb-2 pt-1.5">
+          <div>
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Arguments
+            </p>
+            <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[10px] font-mono text-foreground/90">
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all">
+                {formatJsonBlock(tool.input)}
+              </pre>
             </div>
-          )}
+          </div>
+          <div>
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Result
+            </p>
+            <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[10px] font-mono text-foreground/90">
+              <pre className="max-h-52 overflow-auto whitespace-pre-wrap break-all">
+                {formatJsonBlock(tool.output)}
+              </pre>
+            </div>
+          </div>
         </div>
-      ) : (
-        <p className="pl-6 italic opacity-70">{summary}</p>
       )}
     </div>
   );

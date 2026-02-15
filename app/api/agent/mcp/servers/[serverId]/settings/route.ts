@@ -20,7 +20,7 @@ export async function GET(
   });
 }
 
-export async function PUT(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ serverId: string }> }
 ) {
@@ -31,7 +31,7 @@ export async function PUT(
     request,
     backendPath: `/mcp/servers/${serverId}/settings`,
     init: {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     },

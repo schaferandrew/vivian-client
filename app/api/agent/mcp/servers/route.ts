@@ -9,8 +9,7 @@ export async function GET(request: NextRequest) {
     backendPath: "/mcp/servers",
     init: {
       method: "GET",
-      cache: "force-cache",
-      next: { tags: [CACHE_TAGS.mcpServers] },
+      cache: "no-store",
     },
     fallbackError: "Could not load MCP servers.",
   });
