@@ -353,6 +353,7 @@ export interface ChatMessage {
   isStreaming?: boolean;
   toolsCalled?: ToolCallInfo[];
   documentWorkflows?: DocumentWorkflowArtifact[];
+  followUpQuestion?: FollowUpQuestion;
 }
 
 export interface ToolCallInfo {
@@ -360,6 +361,25 @@ export interface ToolCallInfo {
   tool_name: string;
   input?: string;
   output?: string;
+}
+
+export interface FollowUpQuestionField {
+  key: string;
+  label: string;
+  type: "text" | "date" | "number";
+  required: boolean;
+  placeholder?: string;
+}
+
+export interface FollowUpQuestion {
+  id: string;
+  kind: string;
+  server_id: string;
+  tool_name: string;
+  prompt: string;
+  missing_fields: string[];
+  fields: FollowUpQuestionField[];
+  suggested_values?: Record<string, unknown>;
 }
 
 // Receipt upload state
@@ -504,6 +524,7 @@ export interface ChatMessageResponse {
   chat_id: string;
   tools_called?: ToolCallInfo[];
   document_workflows?: DocumentWorkflowArtifact[];
+  follow_up_question?: FollowUpQuestion;
 }
 
 export interface ChatWithMessages extends Chat {

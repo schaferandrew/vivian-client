@@ -6,6 +6,7 @@ import type {
   MCPServerInfo,
   ToolCallInfo,
   DocumentWorkflowArtifact,
+  FollowUpQuestion,
 } from "@/types";
 import {
   getChats,
@@ -73,6 +74,65 @@ function parseDocumentWorkflows(metadata: unknown): DocumentWorkflowArtifact[] {
           : undefined,
     }))
     .filter((workflow) => workflow.workflow_id && workflow.status);
+}
+
+function parseFollowUpQuestion(metadata: unknown): FollowUpQuestion | undefined {
+  if (!metadata || typeof metadata !== "object") {
+    return undefined;
+  }
+
+  const rawQuestion = (metadata as { follow_up_question?: unknown }).follow_up_question;
+  if (!rawQuestion || typeof rawQuestion !== "object" || Array.isArray(rawQuestion)) {
+    return undefined;
+  }
+
+  const question = rawQuestion as Record<string, unknown>;
+  const rawFields = Array.isArray(question.fields) ? question.fields : [];
+  const fields = rawFields
+    .filter((field): field is Record<string, unknown> => !!field && typeof field === "object")
+    .map((field) => ({
+      key: String(field.key ?? ""),
+      label: String(field.label ?? ""),
+      type:
+        field.type === "date" || field.type === "number"
+          ? field.type
+          : "text",
+      required: field.required !== false,
+      placeholder:
+        typeof field.placeholder === "string" ? field.placeholder : undefined,
+    }))
+    .filter((field) => field.key && field.label);
+
+  const missingFields = Array.isArray(question.missing_fields)
+    ? question.missing_fields
+        .map((field) => String(field ?? "").trim())
+        .filter((field) => field.length > 0)
+    : [];
+
+  const suggestedValues =
+    question.suggested_values && typeof question.suggested_values === "object"
+      ? (question.suggested_values as Record<string, unknown>)
+      : undefined;
+
+  const id = String(question.id ?? "").trim();
+  const prompt = typeof question.prompt === "string" ? question.prompt : "";
+  const serverId = String(question.server_id ?? "").trim();
+  const toolName = String(question.tool_name ?? "").trim();
+  const kind = typeof question.kind === "string" ? question.kind : "missing_tool_fields";
+  if (!id || !prompt || !serverId || !toolName) {
+    return undefined;
+  }
+
+  return {
+    id,
+    kind,
+    server_id: serverId,
+    tool_name: toolName,
+    prompt,
+    missing_fields: missingFields,
+    fields,
+    suggested_values: suggestedValues,
+  };
 }
 
 interface ChatState {
@@ -190,6 +250,7 @@ export const useChatStore = create<ChatState>()(
               timestamp: new Date(msg.timestamp),
               toolsCalled: parseToolsCalled(msg.metadata),
               documentWorkflows: parseDocumentWorkflows(msg.metadata),
+              followUpQuestion: parseFollowUpQuestion(msg.metadata),
             }));
             set({
               currentChatId: chatId,

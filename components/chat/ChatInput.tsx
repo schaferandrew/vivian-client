@@ -51,6 +51,25 @@ export function ChatInput() {
   }, [mcpServers.length, fetchMcpServers]);
 
   useEffect(() => {
+    const handleFillInput = (event: Event) => {
+      const customEvent = event as CustomEvent<{ template?: string }>;
+      const template = customEvent.detail?.template;
+      if (typeof template !== "string" || !template.trim()) {
+        return;
+      }
+      setMessage(template);
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
+    };
+
+    window.addEventListener("vivian-fill-chat-input", handleFillInput as EventListener);
+    return () => {
+      window.removeEventListener("vivian-fill-chat-input", handleFillInput as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
     setEnabledMcpServerIds(mcpServers.filter((server) => server.enabled).map((server) => server.id));
   }, [mcpServers]);
 
@@ -183,6 +202,7 @@ export function ChatInput() {
         timestamp: new Date(),
         toolsCalled: response.tools_called ?? [],
         documentWorkflows: response.document_workflows ?? [],
+        followUpQuestion: response.follow_up_question,
       });
     } catch (error) {
       if (outgoingAttachments.length > 0) {

@@ -4,7 +4,11 @@ import { useRef, useEffect, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useChatStore } from "@/lib/stores/chat";
 import { cn } from "@/lib/utils";
-import type { ChatMessage as ChatMessageType, ToolCallInfo } from "@/types";
+import type {
+  ChatMessage as ChatMessageType,
+  FollowUpQuestion,
+  ToolCallInfo,
+} from "@/types";
 import { DocumentWorkflowCard } from "@/components/chat/DocumentWorkflowCard";
 
 import MarkdownRenderer from '../ui/MarkdownRenderer';
@@ -77,6 +81,51 @@ function formatToolResultSummary(toolName: string, output?: string): string {
   } catch {
     return compactText(output, 160);
   }
+}
+
+function buildFollowUpTemplate(question: FollowUpQuestion): string {
+  const lines = question.fields.map((field) => {
+    const suggested = question.suggested_values?.[field.key];
+    const value =
+      typeof suggested === "string"
+        ? suggested
+        : typeof suggested === "number"
+          ? String(suggested)
+          : field.placeholder || "";
+    return `${field.key}: ${value}`;
+  });
+
+  return lines.join("\n");
+}
+
+function FollowUpQuestionCard({ question }: { question: FollowUpQuestion }) {
+  const handleFillTemplate = () => {
+    const template = buildFollowUpTemplate(question);
+    window.dispatchEvent(
+      new CustomEvent("vivian-fill-chat-input", {
+        detail: { template },
+      })
+    );
+  };
+
+  return (
+    <div className="mt-2 rounded-md border border-border/70 bg-background/40 p-3 text-xs">
+      <p className="font-medium text-foreground">Additional details needed</p>
+      <p className="mt-1 text-muted-foreground">
+        {question.fields.map((field) => field.label).join(", ")}
+      </p>
+      <div className="mt-2 rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] font-mono text-foreground/90">
+        <pre className="whitespace-pre-wrap break-all">{buildFollowUpTemplate(question)}</pre>
+      </div>
+      <button
+        type="button"
+        onClick={handleFillTemplate}
+        className="mt-2 inline-flex rounded border border-border bg-muted px-2 py-1 text-[11px] font-medium text-foreground hover:bg-muted/80"
+      >
+        Insert Template
+      </button>
+    </div>
+  );
 }
 
 function CollapsibleToolResult({ tool }: { tool: ToolCallInfo }) {
@@ -159,6 +208,9 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
               <DocumentWorkflowCard key={workflow.workflow_id} workflow={workflow} />
             ))}
           </div>
+        )}
+        {message.role === "agent" && message.followUpQuestion && (
+          <FollowUpQuestionCard question={message.followUpQuestion} />
         )}
         {message.role === "agent" && message.toolsCalled && message.toolsCalled.length > 0 && (
           <div className="mt-2 space-y-1 border-t border-border/50 pt-2">
