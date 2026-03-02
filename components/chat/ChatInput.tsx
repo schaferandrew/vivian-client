@@ -19,10 +19,12 @@ export function ChatInput() {
   const [isDragActive, setIsDragActive] = useState(false);
   const [recentAttachmentSuccess, setRecentAttachmentSuccess] = useState(false);
   const [enabledMcpServerIds, setEnabledMcpServerIds] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mcpMenuRef = useRef<HTMLDivElement>(null);
   const {
+    messages,
     addMessage,
     setLoading,
     webSearchEnabled,
@@ -119,6 +121,8 @@ export function ChatInput() {
 
     const outgoingAttachments = [...pendingAttachments];
     const baseUserMessage = message.trim() || "Please process this receipt.";
+
+    setHistoryIndex(-1);
     const attachmentLabel =
       outgoingAttachments.length > 0
         ? `\n\nAttached: ${outgoingAttachments
@@ -229,10 +233,42 @@ export function ChatInput() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
+      return;
+    }
+
+    // Derive sent user messages from the store, most recent first
+    const userMessages = messages
+      .filter((m) => m.role === "user")
+      .map((m) => m.content)
+      .reverse();
+
+    if (e.key === "ArrowUp") {
+      // Enter history mode only when input is empty, or continue cycling when already navigating
+      if (message.trim() === "" || historyIndex >= 0) {
+        if (userMessages.length === 0) return;
+        const nextIndex = historyIndex === -1 ? 0 : historyIndex + 1;
+        if (nextIndex >= userMessages.length) return;
+        e.preventDefault();
+        setHistoryIndex(nextIndex);
+        setMessage(userMessages[nextIndex]);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown" && historyIndex >= 0) {
+      e.preventDefault();
+      const prevIndex = historyIndex - 1;
+      if (prevIndex < 0) {
+        setHistoryIndex(-1);
+        setMessage("");
+      } else {
+        setHistoryIndex(prevIndex);
+        setMessage(userMessages[prevIndex]);
+      }
     }
   };
 
