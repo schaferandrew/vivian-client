@@ -2,10 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, House, Link2, Server, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Globe, House, Link2, Server, User as UserIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-type SettingsSection = "profile" | "home" | "connections" | "mcp";
+type SettingsSection = "profile" | "home" | "connections" | "mcp" | "connected-apps";
 
 interface SectionItem {
   id: SettingsSection;
@@ -13,6 +13,7 @@ interface SectionItem {
   description: string;
   icon: typeof UserIcon;
   href: string;
+  adminOnly?: boolean;
 }
 
 const SECTION_ITEMS: SectionItem[] = [
@@ -29,6 +30,7 @@ const SECTION_ITEMS: SectionItem[] = [
     description: "Members and household details",
     icon: House,
     href: "/settings/home",
+    adminOnly: true,
   },
   {
     id: "connections",
@@ -44,6 +46,14 @@ const SECTION_ITEMS: SectionItem[] = [
     icon: Server,
     href: "/settings/mcp",
   },
+  {
+    id: "connected-apps",
+    label: "Connected Apps",
+    description: "Mealie, Jellyfin, Immich",
+    icon: Globe,
+    href: "/settings/connected-apps",
+    adminOnly: true,
+  },
 ];
 
 interface SettingsNavProps {
@@ -54,7 +64,7 @@ export function SettingsNav({ canManageHome = false }: SettingsNavProps) {
   const pathname = usePathname();
 
   const visibleItems = SECTION_ITEMS.filter(
-    (item) => item.id !== "home" || canManageHome
+    (item) => !item.adminOnly || canManageHome
   );
 
   return (
