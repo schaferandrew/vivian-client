@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { CheckCircle2, Globe, Loader2, Paperclip, Plus, Send, X } from "lucide-react";
 
 import { useChatStore } from "@/lib/stores/chat";
@@ -233,6 +233,11 @@ export function ChatInput() {
     }
   };
 
+  const userMessages = useMemo(
+    () => messages.filter((m) => m.role === "user").map((m) => m.content).reverse(),
+    [messages]
+  );
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -249,13 +254,6 @@ export function ChatInput() {
       }
       return;
     }
-
-    // User messages most-recent-first; re-derived each keydown so newly sent
-    // messages are always visible without any extra state.
-    const userMessages = messages
-      .filter((m) => m.role === "user")
-      .map((m) => m.content)
-      .reverse();
 
     if (e.key === "ArrowUp") {
       // Enter history mode only when the input is blank; continue cycling once in it.
