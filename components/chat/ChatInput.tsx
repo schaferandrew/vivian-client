@@ -240,34 +240,45 @@ export function ChatInput() {
       return;
     }
 
-    // Derive sent user messages from the store, most recent first
+    // Ctrl+C clears input and exits history mode
+    if (e.key === "c" && e.ctrlKey) {
+      if (message !== "" || historyIndex >= 0) {
+        e.preventDefault();
+        setMessage("");
+        setHistoryIndex(-1);
+      }
+      return;
+    }
+
+    // User messages most-recent-first; re-derived each keydown so newly sent
+    // messages are always visible without any extra state.
     const userMessages = messages
       .filter((m) => m.role === "user")
       .map((m) => m.content)
       .reverse();
 
     if (e.key === "ArrowUp") {
-      // Enter history mode only when input is empty, or continue cycling when already navigating
-      if (message.trim() === "" || historyIndex >= 0) {
-        if (userMessages.length === 0) return;
-        const nextIndex = historyIndex === -1 ? 0 : historyIndex + 1;
-        if (nextIndex >= userMessages.length) return;
-        e.preventDefault();
-        setHistoryIndex(nextIndex);
-        setMessage(userMessages[nextIndex]);
-      }
+      // Enter history mode only when the input is blank; continue cycling once in it.
+      if (message.trim() !== "" && historyIndex < 0) return;
+      if (userMessages.length === 0) return;
+      const next = historyIndex < 0 ? 0 : historyIndex + 1;
+      if (next >= userMessages.length) return; // already at oldest — don't loop
+      e.preventDefault();
+      setHistoryIndex(next);
+      setMessage(userMessages[next]);
       return;
     }
 
     if (e.key === "ArrowDown" && historyIndex >= 0) {
       e.preventDefault();
-      const prevIndex = historyIndex - 1;
-      if (prevIndex < 0) {
+      const prev = historyIndex - 1;
+      if (prev < 0) {
+        // Past the newest — back to blank
         setHistoryIndex(-1);
         setMessage("");
       } else {
-        setHistoryIndex(prevIndex);
-        setMessage(userMessages[prevIndex]);
+        setHistoryIndex(prev);
+        setMessage(userMessages[prev]);
       }
     }
   };
