@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { CheckCircle2, Globe, Loader2, Paperclip, Plus, Send, X } from "lucide-react";
 
 import { useChatStore } from "@/lib/stores/chat";
@@ -19,10 +19,13 @@ export function ChatInput() {
   const [isDragActive, setIsDragActive] = useState(false);
   const [recentAttachmentSuccess, setRecentAttachmentSuccess] = useState(false);
   const [enabledMcpServerIds, setEnabledMcpServerIds] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [savedDraft, setSavedDraft] = useState<string>("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mcpMenuRef = useRef<HTMLDivElement>(null);
   const {
+    messages,
     addMessage,
     setLoading,
     webSearchEnabled,
@@ -138,6 +141,8 @@ export function ChatInput() {
 
     const outgoingAttachments = [...pendingAttachments];
     const baseUserMessage = message.trim() || "Please process this receipt.";
+
+    setHistoryIndex(-1);
     const attachmentLabel =
       outgoingAttachments.length > 0
         ? `\n\nAttached: ${outgoingAttachments
@@ -249,10 +254,59 @@ export function ChatInput() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const userMessages = useMemo(
+    () => messages.filter((m) => m.role === "user").map((m) => m.content).reverse(),
+    [messages]
+  );
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
+      return;
+    }
+
+    // Ctrl+C clears input and exits history mode
+    if (e.key === "c" && e.ctrlKey) {
+      if (message !== "" || historyIndex >= 0) {
+        e.preventDefault();
+        setMessage("");
+        setHistoryIndex(-1);
+        setSavedDraft("");
+      }
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      if (userMessages.length === 0) return;
+      e.preventDefault();
+      // Enter history mode if not already in it
+      if (historyIndex < 0) {
+        setSavedDraft(message);
+        setHistoryIndex(0);
+        setMessage(userMessages[0]);
+      } else {
+        const next = historyIndex + 1;
+        if (next < userMessages.length) {
+          setHistoryIndex(next);
+          setMessage(userMessages[next]);
+        }
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown" && historyIndex >= 0) {
+      e.preventDefault();
+      const prev = historyIndex - 1;
+      if (prev < 0) {
+        // Past the newest — restore draft and exit history mode
+        setHistoryIndex(-1);
+        setMessage(savedDraft);
+        setSavedDraft("");
+      } else {
+        setHistoryIndex(prev);
+        setMessage(userMessages[prev]);
+      }
     }
   };
 
