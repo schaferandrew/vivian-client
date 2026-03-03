@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -217,14 +216,8 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
                   onClick={() => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))}
                   className="flex items-center gap-3 flex-1 text-left"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-gray-800 relative">
-                    <Image
-                      src={logo}
-                      alt={`${label} logo`}
-                      fill
-                      className="object-contain"
-                      sizes="36px"
-                    />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
+                    <img src={logo} alt={`${label} logo`} className="h-7 w-7 object-contain" />
                   </div>
                   <div className="flex-1">
                     <CardTitle className="text-base">{label}</CardTitle>
