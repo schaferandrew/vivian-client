@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 
@@ -49,24 +48,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <Script
-          id="theme-init"
-          strategy="beforeInteractive"
+        <script
           dangerouslySetInnerHTML={{
-            __html: `(() => {
-  try {
-    const key = "${THEME_STORAGE_KEY}";
-    const stored = localStorage.getItem(key);
-    const validTheme = stored === "light" || stored === "dark" || stored === "system";
-    const theme = validTheme ? stored : "system";
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDarkMode = theme === "dark" || (theme === "system" && prefersDark);
-    document.documentElement.classList.toggle("dark", isDarkMode);
-    document.documentElement.style.colorScheme = isDarkMode ? "dark" : "light";
-  } catch (_error) {
-    // Ignore storage/matchMedia errors and fall back to default theme.
-  }
-})();`,
+            __html: `(function(){try{var e="${THEME_STORAGE_KEY}",t=localStorage.getItem(e),r="light"===t||"dark"===t||"system"===t?t:"system",a=window.matchMedia("(prefers-color-scheme: dark)").matches,o="dark"===r||"system"===r&&a;document.documentElement.classList.toggle("dark",o),document.documentElement.style.colorScheme=o?"dark":"light"}catch(e){}})();`,
           }}
         />
       </head>
