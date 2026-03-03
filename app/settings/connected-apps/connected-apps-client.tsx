@@ -182,6 +182,10 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
           Configure self-hosted services to add quick-launch links to the dashboard.
           Click an app to expand settings, then enter the base URL (e.g. <span className="font-mono">http://192.168.1.10</span>) and port.
         </p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Note: If using <span className="font-mono">http://</span> URLs on an <span className="font-mono">https://</span> site,
+          some browsers may block the links due to mixed content policies.
+        </p>
       </div>
 
       {APPS.map(({ key, label, description, defaultPort, logo }) => {
