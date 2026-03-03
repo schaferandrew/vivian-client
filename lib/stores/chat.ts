@@ -93,10 +93,9 @@ function parseFollowUpQuestion(metadata: unknown): FollowUpQuestion | undefined 
     .map((field) => ({
       key: String(field.key ?? ""),
       label: String(field.label ?? ""),
-      type:
-        field.type === "date" || field.type === "number"
-          ? field.type
-          : "text",
+      type: (field.type === "date" || field.type === "number"
+        ? field.type
+        : "text") as "text" | "date" | "number",
       required: field.required !== false,
       placeholder:
         typeof field.placeholder === "string" ? field.placeholder : undefined,
