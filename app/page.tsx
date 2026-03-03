@@ -5,51 +5,40 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { Camera, MessageSquare, Settings, Heart, Tv, Upload, UtensilsCrossed, Wallet } from "lucide-react";
 import { ProfileMenu } from "@/components/ui/profile-menu";
 
-interface ConnectedAppsSettings {
-  base_url?: string;
-  mealie_enabled?: boolean;
-  mealie_port?: string;
-  jellyfin_enabled?: boolean;
-  jellyfin_port?: string;
-  immich_enabled?: boolean;
-  immich_port?: string;
+interface LinkSetting {
+  key: string;
+  url: string | null;
+  port: number | null;
 }
 
-function buildServiceUrl(baseUrl: string, port: string): string {
-  const base = baseUrl.replace(/\/$/, "");
-  return `${base}:${port}`;
+function buildServiceUrl(setting: LinkSetting): string | null {
+  if (!setting.url) return null;
+  const base = setting.url.replace(/\/$/, "");
+  return setting.port ? `${base}:${setting.port}` : base;
 }
 
-async function getConnectedAppsSettings(): Promise<ConnectedAppsSettings> {
+async function getLinkSettings(): Promise<LinkSetting[]> {
   try {
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.toString();
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/agent/services/settings`,
+      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/agent/link-settings`,
       { headers: { Cookie: cookieHeader }, cache: "no-store" }
     );
-    if (!response.ok) return {};
+    if (!response.ok) return [];
     return response.json();
   } catch {
-    return {};
+    return [];
   }
 }
 
 export default async function HomePage() {
-  const apps = await getConnectedAppsSettings();
+  const linkSettings = await getLinkSettings();
+  const byKey = Object.fromEntries(linkSettings.map((s) => [s.key, s]));
 
-  const mealieUrl =
-    apps.mealie_enabled && apps.base_url && apps.mealie_port
-      ? buildServiceUrl(apps.base_url, apps.mealie_port)
-      : null;
-  const jellyfinUrl =
-    apps.jellyfin_enabled && apps.base_url && apps.jellyfin_port
-      ? buildServiceUrl(apps.base_url, apps.jellyfin_port)
-      : null;
-  const immichUrl =
-    apps.immich_enabled && apps.base_url && apps.immich_port
-      ? buildServiceUrl(apps.base_url, apps.immich_port)
-      : null;
+  const mealieUrl = byKey.mealie ? buildServiceUrl(byKey.mealie) : null;
+  const jellyfinUrl = byKey.jellyfin ? buildServiceUrl(byKey.jellyfin) : null;
+  const immichUrl = byKey.immich ? buildServiceUrl(byKey.immich) : null;
 
   const hasAnyApp = mealieUrl || jellyfinUrl || immichUrl;
 
