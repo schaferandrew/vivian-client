@@ -36,9 +36,9 @@ export default async function HomePage() {
   const linkSettings = await getLinkSettings();
   const byKey = Object.fromEntries(linkSettings.map((s) => [s.key, s]));
 
-  const mealieUrl = byKey.mealie ? buildServiceUrl(byKey.mealie) : null;
-  const jellyfinUrl = byKey.jellyfin ? buildServiceUrl(byKey.jellyfin) : null;
-  const immichUrl = byKey.immich ? buildServiceUrl(byKey.immich) : null;
+  const mealieUrl = buildServiceUrl(byKey.mealie);
+  const jellyfinUrl = buildServiceUrl(byKey.jellyfin);
+  const immichUrl = buildServiceUrl(byKey.immich);
 
   const hasAnyApp = mealieUrl || jellyfinUrl || immichUrl;
 
