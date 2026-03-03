@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Camera, Tv, UtensilsCrossed } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 export interface LinkSetting {
   id: string;
@@ -25,27 +25,21 @@ const APPS = [
     label: "Mealie",
     description: "Recipe management and meal planning",
     defaultPort: "9000",
-    Icon: UtensilsCrossed,
-    iconBg: "bg-[var(--success-100)] dark:bg-[var(--success-900)]",
-    iconColor: "text-[var(--success-700)] dark:text-[var(--success-200)]",
+    logo: "/logos/mealie.svg",
   },
   {
     key: "jellyfin",
     label: "Jellyfin",
     description: "Media server and streaming",
     defaultPort: "8096",
-    Icon: Tv,
-    iconBg: "bg-[var(--primary-100)] dark:bg-[var(--primary-900)]",
-    iconColor: "text-[var(--primary-700)] dark:text-[var(--primary-200)]",
+    logo: "/logos/jellyfin.svg",
   },
   {
     key: "immich",
     label: "Immich",
     description: "Photo and image management",
     defaultPort: "2283",
-    Icon: Camera,
-    iconBg: "bg-[var(--warning-100)] dark:bg-[var(--warning-900)]",
-    iconColor: "text-[var(--warning-700)] dark:text-[var(--warning-200)]",
+    logo: "/logos/immich.svg",
   },
 ] as const;
 
@@ -85,6 +79,11 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
   const [existingByKey, setExistingByKey] = useState<Record<string, LinkSetting>>(() =>
     Object.fromEntries(initialSettings.map((s) => [s.key, s]))
   );
+  const [expanded, setExpanded] = useState<Record<AppKey, boolean>>({
+    mealie: false,
+    jellyfin: false,
+    immich: false,
+  });
   const [saving, setSaving] = useState<Record<AppKey, boolean>>({
     mealie: false,
     jellyfin: false,
@@ -180,12 +179,12 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
       <div>
         <h2 className="text-lg font-semibold">Connected Apps</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Enable self-hosted services to add quick-launch links to the dashboard.
-          Enter the base URL (e.g. <span className="font-mono">http://192.168.1.10</span>) and port for each app.
+          Configure self-hosted services to add quick-launch links to the dashboard.
+          Click an app to expand settings, then enter the base URL (e.g. <span className="font-mono">http://192.168.1.10</span>) and port.
         </p>
       </div>
 
-      {APPS.map(({ key, label, description, defaultPort, Icon, iconBg, iconColor }) => {
+      {APPS.map(({ key, label, description, defaultPort, logo }) => {
         const draft = drafts[key];
         const resolvedUrl =
           draft.enabled && draft.url
@@ -198,26 +197,40 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
           <Card key={key} className={!draft.enabled ? "opacity-60" : undefined}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBg}`}>
-                    <Icon className={`h-4 w-4 ${iconColor}`} />
+                <button
+                  type="button"
+                  onClick={() => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))}
+                  className="flex items-center gap-3 flex-1 text-left"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
+                    <img src={logo} alt={`${label} logo`} className="h-7 w-7 object-contain" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-base">{label}</CardTitle>
                     <CardDescription>{description}</CardDescription>
                   </div>
-                </div>
+                  <ChevronDown
+                    className={`h-5 w-5 text-muted-foreground transition-transform ${
+                      expanded[key] ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={draft.enabled}
-                  onClick={() =>
+                  onClick={() => {
+                    const newEnabled = !draft.enabled;
                     updateDraft(key, {
-                      enabled: !draft.enabled,
+                      enabled: newEnabled,
                       port: draft.port || defaultPort,
-                    })
-                  }
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    });
+                    // Auto-expand when enabling
+                    if (newEnabled) {
+                      setExpanded((prev) => ({ ...prev, [key]: true }));
+                    }
+                  }}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ml-3 ${
                     draft.enabled ? "bg-[var(--primary-600)]" : "bg-secondary border border-border"
                   }`}
                 >
@@ -230,7 +243,7 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
               </div>
             </CardHeader>
 
-            {draft.enabled && (
+            {expanded[key] && (
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
                   <FormField htmlFor={`${key}-url`} label="Base URL">
@@ -271,27 +284,6 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
                 )}
                 {successes[key] && (
                   <p className="text-sm text-[var(--success-700)]">{successes[key]}</p>
-                )}
-              </CardContent>
-            )}
-
-            {!draft.enabled && existingByKey[key] && (
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSave(key, label)}
-                    loading={saving[key]}
-                    loadingText="Removing..."
-                  >
-                    Remove
-                  </Button>
-                </div>
-                {errors[key] && (
-                  <p className="mt-2 text-sm text-[var(--error-700)]">{errors[key]}</p>
-                )}
-                {successes[key] && (
-                  <p className="mt-2 text-sm text-[var(--success-700)]">{successes[key]}</p>
                 )}
               </CardContent>
             )}

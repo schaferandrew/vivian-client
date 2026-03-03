@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { cookies } from "next/headers";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Camera, MessageSquare, Settings, Heart, Tv, Upload, UtensilsCrossed, Wallet } from "lucide-react";
+import { MessageSquare, Settings, Heart, Upload, Wallet } from "lucide-react";
 import { ProfileMenu } from "@/components/ui/profile-menu";
 
 interface LinkSetting {
@@ -165,8 +165,8 @@ export default async function HomePage() {
                   <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--success-100)] dark:bg-[var(--success-900)]">
-                          <UtensilsCrossed className="h-5 w-5 text-[var(--success-700)] dark:text-[var(--success-200)]" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
+                          <img src="/logos/mealie.svg" alt="Mealie logo" className="h-8 w-8 object-contain" />
                         </div>
                         <div>
                           <CardTitle className="text-lg">Mealie</CardTitle>
@@ -183,8 +183,8 @@ export default async function HomePage() {
                   <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary-100)] dark:bg-[var(--primary-900)]">
-                          <Tv className="h-5 w-5 text-[var(--primary-700)] dark:text-[var(--primary-200)]" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
+                          <img src="/logos/jellyfin.svg" alt="Jellyfin logo" className="h-8 w-8 object-contain" />
                         </div>
                         <div>
                           <CardTitle className="text-lg">Jellyfin</CardTitle>
@@ -201,8 +201,8 @@ export default async function HomePage() {
                   <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--warning-100)] dark:bg-[var(--warning-900)]">
-                          <Camera className="h-5 w-5 text-[var(--warning-700)] dark:text-[var(--warning-200)]" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
+                          <img src="/logos/immich.svg" alt="Immich logo" className="h-8 w-8 object-contain" />
                         </div>
                         <div>
                           <CardTitle className="text-lg">Immich</CardTitle>
