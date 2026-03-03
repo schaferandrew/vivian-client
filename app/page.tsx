@@ -11,8 +11,8 @@ interface LinkSetting {
   port: number | null;
 }
 
-function buildServiceUrl(setting: LinkSetting): string | null {
-  if (!setting.url) return null;
+function buildServiceUrl(setting: LinkSetting | undefined): string | null {
+  if (!setting || !setting.url) return null;
   const base = setting.url.replace(/\/$/, "");
   return setting.port ? `${base}:${setting.port}` : base;
 }
