@@ -109,6 +109,15 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
     setSuccesses((prev) => ({ ...prev, [key]: success }));
   };
 
+  const ensureProtocol = (url: string): string => {
+    const trimmed = url.trim();
+    if (!trimmed) return trimmed;
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      return trimmed;
+    }
+    return `http://${trimmed}`;
+  };
+
   const handleSave = async (key: AppKey, appLabel: string) => {
     const draft = drafts[key];
     const existing = existingByKey[key];
@@ -136,7 +145,7 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
       }
 
       const portNum = draft.port.trim() ? parseInt(draft.port, 10) : null;
-      const urlVal = draft.url.trim() || null;
+      const urlVal = draft.url.trim() ? ensureProtocol(draft.url) : null;
 
       if (existing) {
         // PUT to update
@@ -180,7 +189,8 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
         <h2 className="text-lg font-semibold">Connected Apps</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Configure self-hosted services to add quick-launch links to the dashboard.
-          Click an app to expand settings, then enter the base URL (e.g. <span className="font-mono">http://192.168.1.10</span>) and port.
+          Click an app to expand settings, then enter the base URL (e.g. <span className="font-mono">192.168.1.10</span> or <span className="font-mono">server.local</span>) and port.
+          Protocol (<span className="font-mono">http://</span>) will be added automatically if not specified.
         </p>
         <p className="text-xs text-muted-foreground mt-2">
           Note: If using <span className="font-mono">http://</span> URLs on an <span className="font-mono">https://</span> site,
@@ -255,7 +265,7 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
                       id={`${key}-url`}
                       value={draft.url}
                       onChange={(e) => updateDraft(key, { url: e.target.value })}
-                      placeholder="http://192.168.1.10"
+                      placeholder="192.168.1.10 or server.local"
                     />
                   </FormField>
                   <FormField htmlFor={`${key}-port`} label="Port">
