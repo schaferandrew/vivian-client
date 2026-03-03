@@ -20,6 +20,7 @@ export function ChatInput() {
   const [recentAttachmentSuccess, setRecentAttachmentSuccess] = useState(false);
   const [enabledMcpServerIds, setEnabledMcpServerIds] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [savedDraft, setSavedDraft] = useState<string>("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mcpMenuRef = useRef<HTMLDivElement>(null);
@@ -251,19 +252,26 @@ export function ChatInput() {
         e.preventDefault();
         setMessage("");
         setHistoryIndex(-1);
+        setSavedDraft("");
       }
       return;
     }
 
     if (e.key === "ArrowUp") {
-      // Enter history mode only when the input is blank; continue cycling once in it.
-      if (message.trim() !== "" && historyIndex < 0) return;
       if (userMessages.length === 0) return;
-      const next = historyIndex < 0 ? 0 : historyIndex + 1;
-      if (next >= userMessages.length) return; // already at oldest — don't loop
       e.preventDefault();
-      setHistoryIndex(next);
-      setMessage(userMessages[next]);
+      // Enter history mode if not already in it
+      if (historyIndex < 0) {
+        setSavedDraft(message);
+        setHistoryIndex(0);
+        setMessage(userMessages[0]);
+      } else {
+        const next = historyIndex + 1;
+        if (next < userMessages.length) {
+          setHistoryIndex(next);
+          setMessage(userMessages[next]);
+        }
+      }
       return;
     }
 
@@ -271,9 +279,10 @@ export function ChatInput() {
       e.preventDefault();
       const prev = historyIndex - 1;
       if (prev < 0) {
-        // Past the newest — back to blank
+        // Past the newest — restore draft and exit history mode
         setHistoryIndex(-1);
-        setMessage("");
+        setMessage(savedDraft);
+        setSavedDraft("");
       } else {
         setHistoryIndex(prev);
         setMessage(userMessages[prev]);
