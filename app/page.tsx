@@ -14,7 +14,14 @@ interface LinkSetting {
 function buildServiceUrl(setting: LinkSetting | undefined): string | null {
   if (!setting || !setting.url) return null;
   const base = setting.url.replace(/\/$/, "");
-  return setting.port ? `${base}:${setting.port}` : base;
+  const url = setting.port ? `${base}:${setting.port}` : base;
+  try {
+    const { protocol } = new URL(url);
+    if (protocol !== "http:" && protocol !== "https:") return null;
+  } catch {
+    return null;
+  }
+  return url;
 }
 
 async function getLinkSettings(): Promise<LinkSetting[]> {

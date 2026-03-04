@@ -113,9 +113,10 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
   const ensureProtocol = (url: string): string => {
     const trimmed = url.trim();
     if (!trimmed) return trimmed;
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-      return trimmed;
-    }
+    if (trimmed.startsWith("https://")) return trimmed;
+    if (trimmed.startsWith("http://")) return trimmed;
+    // Reject URLs with any explicit non-http(s) protocol (e.g. javascript:, data:)
+    if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(trimmed)) return "";
     return `http://${trimmed}`;
   };
 
@@ -146,7 +147,14 @@ export function ConnectedAppsClient({ initialSettings }: ConnectedAppsClientProp
       }
 
       const portNum = draft.port.trim() ? parseInt(draft.port, 10) : null;
-      const urlVal = draft.url.trim() ? ensureProtocol(draft.url) : null;
+      const rawUrl = draft.url.trim();
+      const urlVal = rawUrl ? ensureProtocol(draft.url) : null;
+
+      if (rawUrl && !urlVal) {
+        setAppStatus(key, "Invalid URL. Please use http:// or https:// only.", null);
+        setSaving((prev) => ({ ...prev, [key]: false }));
+        return;
+      }
 
       if (existing) {
         // PUT to update
