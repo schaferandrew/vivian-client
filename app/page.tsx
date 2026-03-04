@@ -165,7 +165,7 @@ export default async function HomePage() {
                   <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800 relative">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800 relative p-1.5">
                           <Image
                             src="/logos/mealie.svg"
                             alt="Mealie logo"
@@ -189,7 +189,7 @@ export default async function HomePage() {
                   <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800 relative">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800 relative p-1.5">
                           <Image
                             src="/logos/jellyfin.svg"
                             alt="Jellyfin logo"
