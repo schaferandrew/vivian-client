@@ -11,10 +11,22 @@ interface LinkSetting {
   port: number | null;
 }
 
+function sanitizeUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 function buildServiceUrl(setting: LinkSetting | undefined): string | null {
   if (!setting || !setting.url) return null;
   const base = setting.url.replace(/\/$/, "");
-  return setting.port ? `${base}:${setting.port}` : base;
+  const url = setting.port ? `${base}:${setting.port}` : base;
+  return sanitizeUrl(url);
 }
 
 async function getLinkSettings(): Promise<LinkSetting[]> {
