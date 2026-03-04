@@ -83,21 +83,6 @@ function formatToolResultSummary(toolName: string, output?: string): string {
   }
 }
 
-function buildFollowUpTemplate(question: FollowUpQuestion): string {
-  const lines = question.fields.map((field) => {
-    const suggested = question.suggested_values?.[field.key];
-    const value =
-      typeof suggested === "string"
-        ? suggested
-        : typeof suggested === "number"
-          ? String(suggested)
-          : field.placeholder || "";
-    return `${field.key}: ${value}`;
-  });
-
-  return lines.join("\n");
-}
-
 function FollowUpQuestionCard({ question }: { question: FollowUpQuestion }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [otherTextInputs, setOtherTextInputs] = useState<Record<string, string>>({});
