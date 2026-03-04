@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type {
   ChatMessage as ChatMessageType,
   FollowUpQuestion,
+  FollowUpQuestionField,
   ToolCallInfo,
 } from "@/types";
 import { DocumentWorkflowCard } from "@/components/chat/DocumentWorkflowCard";
