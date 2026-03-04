@@ -35,6 +35,99 @@ export function McpClient({ initialServers, googleConnected }: McpClientProps) {
   const [testErrors, setTestErrors] = useState<Record<string, string>>({});
   const [testLoading, setTestLoading] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [customSettings, setCustomSettings] = useState<Record<string, unknown>>({});
+  const [customSettingsLoading, setCustomSettingsLoading] = useState(true);
+  const [customSettingsSaving, setCustomSettingsSaving] = useState(false);
+  const [customSettingsError, setCustomSettingsError] = useState<string | null>(null);
+  const [customSettingsSuccess, setCustomSettingsSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadCustomSettings = async () => {
+      setCustomSettingsLoading(true);
+      setCustomSettingsError(null);
+
+      try {
+        const response = await fetch("/api/agent/mcp/settings", { cache: "no-store" });
+        if (!response.ok) throw new Error("Failed to load custom MCP settings");
+
+        const data = await response.json();
+        const settingsCandidate =
+          data && typeof data === "object" && data.settings && typeof data.settings === "object"
+            ? (data.settings as Record<string, unknown>)
+            : data;
+
+        const typedCandidate =
+          settingsCandidate && typeof settingsCandidate === "object"
+            ? (settingsCandidate as Record<string, unknown>)
+            : {};
+
+        const explicitCustomSettings =
+          (typedCandidate.custom_mcp_settings as Record<string, unknown> | undefined) ||
+          (typedCandidate.custom_settings as Record<string, unknown> | undefined);
+
+        const effectiveSettings = explicitCustomSettings || typedCandidate;
+
+        const primitiveSettings = Object.entries(effectiveSettings).reduce<Record<string, unknown>>(
+          (acc, [key, value]) => {
+            if (
+              typeof value === "string" ||
+              typeof value === "number" ||
+              typeof value === "boolean" ||
+              value == null
+            ) {
+              acc[key] = value;
+            }
+            return acc;
+          },
+          {}
+        );
+
+        setCustomSettings(primitiveSettings);
+      } catch (err) {
+        setCustomSettingsError(
+          err instanceof Error ? err.message : "Failed to load custom MCP settings"
+        );
+      } finally {
+        setCustomSettingsLoading(false);
+      }
+    };
+
+    void loadCustomSettings();
+  }, []);
+
+  const handleSaveCustomSettings = async () => {
+    setCustomSettingsSaving(true);
+    setCustomSettingsError(null);
+    setCustomSettingsSuccess(null);
+
+    try {
+      const response = await fetch("/api/agent/mcp/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(customSettings),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || "Failed to save custom MCP settings");
+      }
+
+      setCustomSettingsSuccess("Custom MCP settings saved successfully");
+    } catch (err) {
+      setCustomSettingsError(
+        err instanceof Error ? err.message : "Failed to save custom MCP settings"
+      );
+    } finally {
+      setCustomSettingsSaving(false);
+    }
+  };
+
+  const customSettingEntries = Object.entries(customSettings);
+
+  const toLabel = (key: string) =>
+    key
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
 
   const handleToggleServer = async (serverId: string) => {
     setGlobalError(null);
@@ -163,14 +256,94 @@ export function McpClient({ initialServers, googleConnected }: McpClientProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>MCP Servers</CardTitle>
-        <CardDescription>
-          Enable or disable tools available to chat and workflow steps.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Custom MCP Settings</CardTitle>
+          <CardDescription>
+            Configure custom MCP behavior and connection defaults.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {customSettingsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading custom MCP settings...</p>
+          ) : customSettingEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No custom MCP settings are available for this workspace.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {customSettingEntries.map(([key, value]) => {
+                const isBoolean = typeof value === "boolean";
+                const isNumber = typeof value === "number";
+
+                return (
+                  <div key={key} className="grid gap-1.5">
+                    <label className="text-sm font-medium text-foreground">{toLabel(key)}</label>
+
+                    {isBoolean ? (
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={(value as boolean) || false}
+                          onCheckedChange={(checked) =>
+                            setCustomSettings((prev) => ({
+                              ...prev,
+                              [key]: checked === true,
+                            }))
+                          }
+                        />
+                        <span className="text-sm text-muted-foreground">Enabled</span>
+                      </div>
+                    ) : (
+                      <Input
+                        type={isNumber ? "number" : "text"}
+                        value={value == null ? "" : String(value)}
+                        onChange={(e) =>
+                          setCustomSettings((prev) => ({
+                            ...prev,
+                            [key]: isNumber
+                              ? e.target.value === ""
+                                ? null
+                                : Number(e.target.value)
+                              : e.target.value,
+                          }))
+                        }
+                      />
+                    )}
+                  </div>
+                );
+              })}
+
+              <div className="flex items-center gap-2 pt-2">
+                <Button
+                  size="sm"
+                  onClick={handleSaveCustomSettings}
+                  loading={customSettingsSaving}
+                  loadingText="Saving..."
+                >
+                  Save Custom Settings
+                </Button>
+                {customSettingsSuccess && (
+                  <span className="text-sm text-[var(--success-600)]">{customSettingsSuccess}</span>
+                )}
+              </div>
+
+              {customSettingsError && (
+                <p className="text-sm text-[var(--error-700)]">{customSettingsError}</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>MCP Servers</CardTitle>
+          <CardDescription>
+            Enable or disable tools available to chat and workflow steps.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
         {mcpServers.length === 0 ? (
           <p className="text-sm text-muted-foreground">No MCP servers discovered yet.</p>
         ) : (
@@ -420,7 +593,8 @@ export function McpClient({ initialServers, googleConnected }: McpClientProps) {
         )}
 
         {globalError && <p className="text-sm text-[var(--error-700)]">{globalError}</p>}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
