@@ -38,6 +38,9 @@ async function fetchLinkSettings(): Promise<LinkSetting[]> {
     { headers: { Cookie: cookieHeader }, cache: "no-store" }
   );
 
+  if (response.status === 401) {
+    redirect(`/login?next=${encodeURIComponent("/settings/connected-apps")}`);
+  }
   if (!response.ok) throw new Error("Failed to load link settings");
 
   return response.json();
