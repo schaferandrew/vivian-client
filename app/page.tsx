@@ -17,6 +17,17 @@ function buildServiceUrl(setting: LinkSetting | undefined): string | null {
   return setting.port ? `${base}:${setting.port}` : base;
 }
 
+function sanitizeUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 async function getLinkSettings(): Promise<LinkSetting[]> {
   try {
     const cookieStore = await cookies();
@@ -36,9 +47,9 @@ export default async function HomePage() {
   const linkSettings = await getLinkSettings();
   const byKey = Object.fromEntries(linkSettings.map((s) => [s.key, s]));
 
-  const mealieUrl = buildServiceUrl(byKey.mealie);
-  const jellyfinUrl = buildServiceUrl(byKey.jellyfin);
-  const immichUrl = buildServiceUrl(byKey.immich);
+  const mealieUrl = sanitizeUrl(buildServiceUrl(byKey.mealie));
+  const jellyfinUrl = sanitizeUrl(buildServiceUrl(byKey.jellyfin));
+  const immichUrl = sanitizeUrl(buildServiceUrl(byKey.immich));
 
   const hasAnyApp = mealieUrl || jellyfinUrl || immichUrl;
 
