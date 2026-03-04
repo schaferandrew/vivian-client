@@ -165,8 +165,14 @@ export default async function HomePage() {
                   <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
-                          <img src="/logos/mealie.svg" alt="Mealie logo" className="h-8 w-8 object-contain" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800 relative">
+                          <Image
+                            src="/logos/mealie.svg"
+                            alt="Mealie logo"
+                            fill
+                            className="object-contain"
+                            sizes="40px"
+                          />
                         </div>
                         <div>
                           <CardTitle className="text-lg">Mealie</CardTitle>
@@ -183,8 +189,14 @@ export default async function HomePage() {
                   <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
-                          <img src="/logos/jellyfin.svg" alt="Jellyfin logo" className="h-8 w-8 object-contain" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800 relative">
+                          <Image
+                            src="/logos/jellyfin.svg"
+                            alt="Jellyfin logo"
+                            fill
+                            className="object-contain"
+                            sizes="40px"
+                          />
                         </div>
                         <div>
                           <CardTitle className="text-lg">Jellyfin</CardTitle>
@@ -201,8 +213,14 @@ export default async function HomePage() {
                   <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
-                          <img src="/logos/immich.svg" alt="Immich logo" className="h-8 w-8 object-contain" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800 relative">
+                          <Image
+                            src="/logos/immich.svg"
+                            alt="Immich logo"
+                            fill
+                            className="object-contain"
+                            sizes="40px"
+                          />
                         </div>
                         <div>
                           <CardTitle className="text-lg">Immich</CardTitle>
