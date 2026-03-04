@@ -6,6 +6,7 @@ import type {
   MCPServerInfo,
   ToolCallInfo,
   DocumentWorkflowArtifact,
+  FollowUpQuestion,
 } from "@/types";
 import {
   getChats,
@@ -86,6 +87,8 @@ interface ChatState {
   mcpServers: MCPServerInfo[];
   /** Workflow IDs that have been successfully saved (persisted as array). */
   completedWorkflowIds: string[];
+  /** Ephemeral follow-up questions (cleared when user sends next message) */
+  pendingFollowUpQuestions: FollowUpQuestion[];
 
   addMessage: (message: ChatMessage) => void;
   setLoading: (loading: boolean) => void;
@@ -97,6 +100,8 @@ interface ChatState {
   toggleSidebar: () => void;
   markWorkflowCompleted: (workflowId: string) => void;
   isWorkflowCompleted: (workflowId: string) => boolean;
+  setPendingFollowUpQuestions: (questions: FollowUpQuestion[]) => void;
+  clearPendingFollowUpQuestions: () => void;
 
   fetchChats: () => Promise<void>;
   fetchMcpServers: () => Promise<void>;
@@ -117,11 +122,18 @@ export const useChatStore = create<ChatState>()(
       webSearchEnabled: false,
       mcpServers: [],
       completedWorkflowIds: [],
+      pendingFollowUpQuestions: [],
 
       addMessage: (message) =>
         set((state) => ({
           messages: [...state.messages, message],
         })),
+
+      setPendingFollowUpQuestions: (questions) =>
+        set({ pendingFollowUpQuestions: questions }),
+
+      clearPendingFollowUpQuestions: () =>
+        set({ pendingFollowUpQuestions: [] }),
 
       setLoading: (loading) => set({ isLoading: loading }),
 
