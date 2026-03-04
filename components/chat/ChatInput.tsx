@@ -294,8 +294,8 @@ export function ChatInput() {
       return;
     }
 
-    // Ctrl+C clears input and exits history mode
-    if (e.key === "c" && e.ctrlKey) {
+    // Escape clears input and exits history mode
+    if (e.key === "Escape") {
       if (message !== "" || historyIndex >= 0) {
         e.preventDefault();
         setMessage("");
