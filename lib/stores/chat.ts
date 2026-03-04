@@ -90,16 +90,33 @@ function parseFollowUpQuestion(metadata: unknown): FollowUpQuestion | undefined 
   const rawFields = Array.isArray(question.fields) ? question.fields : [];
   const fields = rawFields
     .filter((field): field is Record<string, unknown> => !!field && typeof field === "object")
-    .map((field) => ({
-      key: String(field.key ?? ""),
-      label: String(field.label ?? ""),
-      type: (field.type === "date" || field.type === "number"
+    .map((field) => {
+      const type = (field.type === "date" ||
+                   field.type === "number" ||
+                   field.type === "select" ||
+                   field.type === "multiselect"
         ? field.type
-        : "text") as "text" | "date" | "number",
-      required: field.required !== false,
-      placeholder:
-        typeof field.placeholder === "string" ? field.placeholder : undefined,
-    }))
+        : "text") as "text" | "date" | "number" | "select" | "multiselect";
+
+      const options = Array.isArray(field.options)
+        ? field.options
+            .filter((opt): opt is Record<string, unknown> => !!opt && typeof opt === "object")
+            .map((opt) => ({
+              value: String(opt.value ?? ""),
+              label: String(opt.label ?? ""),
+              requires_text_input: opt.requires_text_input === true,
+            }))
+        : undefined;
+
+      return {
+        key: String(field.key ?? ""),
+        label: String(field.label ?? ""),
+        type,
+        required: field.required !== false,
+        placeholder: typeof field.placeholder === "string" ? field.placeholder : undefined,
+        options,
+      };
+    })
     .filter((field) => field.key && field.label);
 
   const missingFields = Array.isArray(question.missing_fields)
@@ -134,6 +151,21 @@ function parseFollowUpQuestion(metadata: unknown): FollowUpQuestion | undefined 
   };
 }
 
+function parseFollowUpQuestions(metadata: unknown): FollowUpQuestion[] {
+  if (!metadata || typeof metadata !== "object") {
+    return [];
+  }
+
+  const rawQuestions = (metadata as { follow_up_questions?: unknown }).follow_up_questions;
+  if (!Array.isArray(rawQuestions)) {
+    return [];
+  }
+
+  return rawQuestions
+    .map((q) => parseFollowUpQuestion({ follow_up_question: q }))
+    .filter((q): q is FollowUpQuestion => q !== undefined);
+}
+
 interface ChatState {
   messages: ChatMessage[];
   chats: Chat[];
@@ -145,6 +177,8 @@ interface ChatState {
   mcpServers: MCPServerInfo[];
   /** Workflow IDs that have been successfully saved (persisted as array). */
   completedWorkflowIds: string[];
+  /** Ephemeral follow-up questions (cleared when user sends next message) */
+  pendingFollowUpQuestions: FollowUpQuestion[];
 
   addMessage: (message: ChatMessage) => void;
   setLoading: (loading: boolean) => void;
@@ -156,6 +190,8 @@ interface ChatState {
   toggleSidebar: () => void;
   markWorkflowCompleted: (workflowId: string) => void;
   isWorkflowCompleted: (workflowId: string) => boolean;
+  setPendingFollowUpQuestions: (questions: FollowUpQuestion[]) => void;
+  clearPendingFollowUpQuestions: () => void;
 
   fetchChats: () => Promise<void>;
   fetchMcpServers: () => Promise<void>;
@@ -176,11 +212,18 @@ export const useChatStore = create<ChatState>()(
       webSearchEnabled: false,
       mcpServers: [],
       completedWorkflowIds: [],
+      pendingFollowUpQuestions: [],
 
       addMessage: (message) =>
         set((state) => ({
           messages: [...state.messages, message],
         })),
+
+      setPendingFollowUpQuestions: (questions) =>
+        set({ pendingFollowUpQuestions: questions }),
+
+      clearPendingFollowUpQuestions: () =>
+        set({ pendingFollowUpQuestions: [] }),
 
       setLoading: (loading) => set({ isLoading: loading }),
 
@@ -249,7 +292,6 @@ export const useChatStore = create<ChatState>()(
               timestamp: new Date(msg.timestamp),
               toolsCalled: parseToolsCalled(msg.metadata),
               documentWorkflows: parseDocumentWorkflows(msg.metadata),
-              followUpQuestion: parseFollowUpQuestion(msg.metadata),
             }));
             set({
               currentChatId: chatId,

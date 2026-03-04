@@ -55,15 +55,29 @@ export function ChatInput() {
 
   useEffect(() => {
     const handleFillInput = (event: Event) => {
-      const customEvent = event as CustomEvent<{ template?: string }>;
+      const customEvent = event as CustomEvent<{ template?: string; autoSend?: boolean }>;
       const template = customEvent.detail?.template;
+      const autoSend = customEvent.detail?.autoSend ?? false;
+
       if (typeof template !== "string" || !template.trim()) {
         return;
       }
+
       setMessage(template);
-      requestAnimationFrame(() => {
-        textareaRef.current?.focus();
-      });
+
+      if (autoSend) {
+        // Auto-send the message after a brief delay to ensure state is updated
+        setTimeout(() => {
+          const form = textareaRef.current?.closest("form");
+          if (form) {
+            form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+          }
+        }, 50);
+      } else {
+        requestAnimationFrame(() => {
+          textareaRef.current?.focus();
+        });
+      }
     };
 
     window.addEventListener("vivian-fill-chat-input", handleFillInput as EventListener);
@@ -139,6 +153,9 @@ export function ChatInput() {
     e.preventDefault();
     if (!message.trim() && pendingAttachments.length === 0) return;
 
+    // Clear any pending follow-up questions when user sends a message
+    useChatStore.getState().clearPendingFollowUpQuestions();
+
     const outgoingAttachments = [...pendingAttachments];
     const baseUserMessage = message.trim() || "Please process this receipt.";
 
@@ -200,15 +217,26 @@ export function ChatInput() {
           ? "Receipt received. I parsed it and need your confirmation below.\n\n"
           : "";
 
-      addMessage({
-        id: (Date.now() + 1).toString(),
-        role: "agent",
-        content: `${attachmentAcknowledgement}${response.response}`,
-        timestamp: new Date(),
-        toolsCalled: response.tools_called ?? [],
-        documentWorkflows: response.document_workflows ?? [],
-        followUpQuestion: response.follow_up_question,
-      });
+      // Handle follow-up questions as ephemeral state (not in message history)
+      const followUpQuestions = response.follow_up_questions ?? [];
+      const hasFollowUp = followUpQuestions.length > 0 || !!response.follow_up_question;
+      if (followUpQuestions.length > 0) {
+        useChatStore.getState().setPendingFollowUpQuestions(followUpQuestions);
+      } else if (response.follow_up_question) {
+        useChatStore.getState().setPendingFollowUpQuestions([response.follow_up_question]);
+      }
+
+      // Don't add agent text when showing a follow-up card — the card prompt is the message
+      if (!hasFollowUp) {
+        addMessage({
+          id: (Date.now() + 1).toString(),
+          role: "agent",
+          content: `${attachmentAcknowledgement}${response.response}`,
+          timestamp: new Date(),
+          toolsCalled: response.tools_called ?? [],
+          documentWorkflows: response.document_workflows ?? [],
+        });
+      }
     } catch (error) {
       if (outgoingAttachments.length > 0) {
         setPendingAttachments(outgoingAttachments);

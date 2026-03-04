@@ -354,6 +354,7 @@ export interface ChatMessage {
   toolsCalled?: ToolCallInfo[];
   documentWorkflows?: DocumentWorkflowArtifact[];
   followUpQuestion?: FollowUpQuestion;
+  followUpQuestions?: FollowUpQuestion[];
 }
 
 export interface ToolCallInfo {
@@ -363,12 +364,19 @@ export interface ToolCallInfo {
   output?: string;
 }
 
+export interface QuestionOption {
+  value: string;
+  label: string;
+  requires_text_input?: boolean;
+}
+
 export interface FollowUpQuestionField {
   key: string;
   label: string;
-  type: "text" | "date" | "number";
+  type: "text" | "date" | "number" | "select" | "multiselect";
   required: boolean;
   placeholder?: string;
+  options?: QuestionOption[];
 }
 
 export interface FollowUpQuestion {
@@ -525,6 +533,7 @@ export interface ChatMessageResponse {
   tools_called?: ToolCallInfo[];
   document_workflows?: DocumentWorkflowArtifact[];
   follow_up_question?: FollowUpQuestion;
+  follow_up_questions?: FollowUpQuestion[];
 }
 
 export interface ChatWithMessages extends Chat {

@@ -99,31 +99,186 @@ function buildFollowUpTemplate(question: FollowUpQuestion): string {
 }
 
 function FollowUpQuestionCard({ question }: { question: FollowUpQuestion }) {
-  const handleFillTemplate = () => {
-    const template = buildFollowUpTemplate(question);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [otherTextInputs, setOtherTextInputs] = useState<Record<string, string>>({});
+  const [selectedIndices, setSelectedIndices] = useState<Record<string, number>>({});
+  const firstInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Auto-focus first input field
+    if (firstInputRef.current) {
+      firstInputRef.current.focus();
+    }
+  }, []);
+
+  const handleSubmit = () => {
+    // Build answer message from all fields
+    const answerLines = question.fields.map((field) => {
+      const answer = answers[field.key];
+      if (field.type === "select" && answer === "other" && otherTextInputs[field.key]) {
+        return `${field.label}: ${otherTextInputs[field.key]}`;
+      }
+      // For select fields, use the option label instead of value
+      if (field.type === "select" && field.options) {
+        const selectedOption = field.options.find(opt => opt.value === answer);
+        return `${field.label}: ${selectedOption?.label || answer || ""}`;
+      }
+      return `${field.label}: ${answer || ""}`;
+    });
+
+    const message = answerLines.join("\n");
     window.dispatchEvent(
       new CustomEvent("vivian-fill-chat-input", {
-        detail: { template },
+        detail: { template: message, autoSend: true },
       })
     );
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, field: FollowUpQuestionField) => {
+    // Enter key submits (unless it's a textarea-like situation)
+    if (e.key === "Enter" && !e.shiftKey && question.fields.length === 1) {
+      e.preventDefault();
+      handleSubmit();
+    }
+
+    // Arrow key navigation for select fields
+    if (field.type === "select" && field.options && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      e.preventDefault();
+      const currentIndex = selectedIndices[field.key] ?? -1;
+      const newIndex = e.key === "ArrowDown"
+        ? Math.min(currentIndex + 1, field.options.length - 1)
+        : Math.max(currentIndex - 1, 0);
+
+      setSelectedIndices(prev => ({ ...prev, [field.key]: newIndex }));
+      setAnswers(prev => ({ ...prev, [field.key]: field.options![newIndex].value }));
+    }
+  };
+
+  const renderField = (field: FollowUpQuestionField, index: number) => {
+    if (field.type === "select" && field.options) {
+      const selectedOption = field.options.find(opt => opt.value === answers[field.key]);
+      const selectedIndex = selectedIndices[field.key] ?? field.options.findIndex(opt => opt.value === answers[field.key]);
+
+      return (
+        <div key={field.key} className="space-y-2">
+          <label className="block text-sm font-medium text-foreground">
+            {field.label}
+            {field.required && <span className="ml-1 text-destructive">*</span>}
+          </label>
+          <div className="flex flex-col gap-1.5">
+            {field.options.map((option, optIndex) => {
+              const isSelected = answers[field.key] === option.value;
+              const isHighlighted = selectedIndex === optIndex;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    setSelectedIndices(prev => ({ ...prev, [field.key]: optIndex }));
+                    setAnswers(prev => ({ ...prev, [field.key]: option.value }));
+                    if (!option.requires_text_input) {
+                      setOtherTextInputs(prev => {
+                        const next = { ...prev };
+                        delete next[field.key];
+                        return next;
+                      });
+                    }
+                  }}
+                  onKeyDown={(e) => handleKeyDown(e, field)}
+                  className={`rounded border px-3 py-2 text-sm text-left transition-all ${
+                    isSelected
+                      ? "border-primary bg-primary text-primary-foreground font-medium"
+                      : isHighlighted
+                      ? "border-primary/50 bg-muted"
+                      : "border-border bg-background hover:bg-muted hover:border-border/80"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          {selectedOption?.requires_text_input && (
+            <input
+              type="text"
+              value={otherTextInputs[field.key] || ""}
+              onChange={(e) => setOtherTextInputs(prev => ({ ...prev, [field.key]: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && question.fields.length === 1) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              placeholder="Please specify..."
+              autoFocus
+              className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          )}
+        </div>
+      );
+    } else if (field.type === "text" || field.type === "number" || field.type === "date") {
+      return (
+        <div key={field.key} className="space-y-2">
+          <label className="block text-sm font-medium text-foreground">
+            {field.label}
+            {field.required && <span className="ml-1 text-destructive">*</span>}
+          </label>
+          <input
+            ref={index === 0 ? firstInputRef : null}
+            type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+            value={answers[field.key] || ""}
+            onChange={(e) => setAnswers(prev => ({ ...prev, [field.key]: e.target.value }))}
+            onKeyDown={(e) => handleKeyDown(e, field)}
+            placeholder={field.placeholder}
+            className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const canSubmit = question.fields.every(field => {
+    const hasAnswer = answers[field.key];
+    if (!field.required) return true;
+    if (!hasAnswer) return false;
+    // If "other" option selected, need text input too
+    if (hasAnswer === "other" && !otherTextInputs[field.key]) return false;
+    return true;
+  });
+
   return (
-    <div className="mt-2 rounded-md border border-border/70 bg-background/40 p-3 text-xs">
-      <p className="font-medium text-foreground">Additional details needed</p>
-      <p className="mt-1 text-muted-foreground">
-        {question.fields.map((field) => field.label).join(", ")}
-      </p>
-      <div className="mt-2 rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] font-mono text-foreground/90">
-        <pre className="whitespace-pre-wrap break-all">{buildFollowUpTemplate(question)}</pre>
+    <div className="mt-3 rounded-lg border-2 border-primary/30 bg-background p-4 shadow-sm">
+      <div className="mb-3 flex items-start gap-2">
+        <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+          ?
+        </div>
+        <p className="text-sm font-medium text-foreground leading-relaxed">
+          {question.prompt || "Additional details needed"}
+        </p>
       </div>
-      <button
-        type="button"
-        onClick={handleFillTemplate}
-        className="mt-2 inline-flex rounded border border-border bg-muted px-2 py-1 text-[11px] font-medium text-foreground hover:bg-muted/80"
-      >
-        Insert Template
-      </button>
+
+      <div className="space-y-4">
+        {question.fields.map((field, index) => renderField(field, index))}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3">
+        <p className="text-xs text-muted-foreground">
+          {question.fields.length === 1 ? "Press Enter to submit" : "Fill all fields and submit"}
+        </p>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${
+            canSubmit
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+          }`}
+        >
+          Submit
+        </button>
+      </div>
     </div>
   );
 }
@@ -209,9 +364,6 @@ function ChatMessage({ message }: { message: ChatMessageType }) {
             ))}
           </div>
         )}
-        {message.role === "agent" && message.followUpQuestion && (
-          <FollowUpQuestionCard question={message.followUpQuestion} />
-        )}
         {message.role === "agent" && message.toolsCalled && message.toolsCalled.length > 0 && (
           <div className="mt-2 space-y-1 border-t border-border/50 pt-2">
             {message.toolsCalled.map((tool, idx) => (
@@ -243,11 +395,11 @@ function LoadingIndicator() {
 
 export function ChatContainer() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { messages, isLoading } = useChatStore();
+  const { messages, isLoading, pendingFollowUpQuestions } = useChatStore();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, pendingFollowUpQuestions]);
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-5 min-h-0">
@@ -262,6 +414,18 @@ export function ChatContainer() {
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
+
+        {pendingFollowUpQuestions.length > 0 && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%]">
+              <div className="space-y-2">
+                {pendingFollowUpQuestions.map((question) => (
+                  <FollowUpQuestionCard key={question.id} question={question} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {isLoading && <LoadingIndicator />}
 
