@@ -33,18 +33,22 @@ export function setAuthCookies(response: NextResponse, pair: TokenPair) {
 }
 
 export function clearAuthCookies(response: NextResponse) {
+  const expired = new Date(0);
+  const secure = process.env.NODE_ENV === "production";
   response.cookies.set(ACCESS_TOKEN_COOKIE, "", {
     httpOnly: false,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax",
     path: "/",
     maxAge: 0,
+    expires: expired,
   });
   response.cookies.set(REFRESH_TOKEN_COOKIE, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax",
     path: "/",
     maxAge: 0,
+    expires: expired,
   });
 }
