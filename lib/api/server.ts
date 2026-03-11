@@ -113,6 +113,42 @@ export async function getUnreimbursedBalanceServer(): Promise<UnreimbursedBalanc
   return payload as UnreimbursedBalanceResponse;
 }
 
+interface GoogleStatus {
+  connected: boolean;
+  provider_email?: string;
+}
+
+export async function getGoogleStatusServer(): Promise<GoogleStatus | null> {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
+
+    const headers = new Headers();
+    if (accessToken) {
+      headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+
+    const response = await fetchWithErrorHandling(
+      `${AGENT_API_URL}/integrations/google/status`,
+      {
+        method: "GET",
+        headers,
+        cache: "no-store",
+      }
+    );
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload) return null;
+
+    return {
+      connected: Boolean(payload.connected),
+      provider_email: payload.provider_email ?? undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getCharitableSummaryServer(taxYear?: string): Promise<CharitableSummaryResponse> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;

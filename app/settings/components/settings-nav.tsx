@@ -2,10 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Globe, House, Link2, Server, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Globe, House, KeyRound, Link2, Server, User as UserIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-type SettingsSection = "profile" | "home" | "connections" | "mcp" | "connected-apps";
+type SettingsSection = "profile" | "home" | "connections" | "mcp" | "api-keys" | "connected-apps";
 
 interface SectionItem {
   id: SettingsSection;
@@ -45,6 +45,14 @@ const SECTION_ITEMS: SectionItem[] = [
     description: "Tools and server controls",
     icon: Server,
     href: "/settings/mcp",
+  },
+  {
+    id: "api-keys",
+    label: "API Keys",
+    description: "Named keys for external access",
+    icon: KeyRound,
+    href: "/settings/api-keys",
+    adminOnly: true,
   },
   {
     id: "connected-apps",

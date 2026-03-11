@@ -14,6 +14,12 @@ interface GoogleIntegrationStatus {
   scopes?: string[];
 }
 
+interface ProfilePayload {
+  memberships: Array<{
+    role: string;
+  }>;
+}
+
 async function fetchGoogleStatus(): Promise<GoogleIntegrationStatus> {
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
@@ -36,13 +42,42 @@ async function fetchGoogleStatus(): Promise<GoogleIntegrationStatus> {
   return response.json();
 }
 
+async function fetchProfile(): Promise<ProfilePayload | null> {
+  try {
+    const cookieStore = await cookies();
+    const cookieHeader = cookieStore.toString();
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/auth/me`,
+      {
+        headers: { Cookie: cookieHeader },
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
+  }
+}
+
+function canManageHome(profile: ProfilePayload | null): boolean {
+  if (!profile) return false;
+  return profile.memberships.some((m) => m.role === "owner");
+}
+
 async function ConnectionsContent() {
   try {
-    const googleStatus = await fetchGoogleStatus();
-    
+    const [googleStatus, profile] = await Promise.all([
+      fetchGoogleStatus(),
+      fetchProfile(),
+    ]);
+
     return (
       <ConnectionsClient
         initialGoogleStatus={googleStatus}
+        canManageHome={canManageHome(profile)}
         apiUrl={process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000/api/v1"}
         wsUrl={process.env.NEXT_PUBLIC_AGENT_WS_URL || "ws://localhost:8000/api/v1/chat/ws"}
       />
