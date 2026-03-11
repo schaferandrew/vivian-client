@@ -52,8 +52,17 @@ function CategoryToggle({ value, onChange }: { value: ExpenseCategory; onChange:
 function SingleUploadStep() {
   const { setStep, setTempFilePath, setUploading, isUploading, setError, category, setCategory } = useReceiptStore();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/agent/integrations/google/status")
+      .then((r) => r.json())
+      .then((data) => setGoogleConnected(Boolean(data?.connected)))
+      .catch(() => setGoogleConnected(null));
+  }, []);
 
   const onDrop = useCallback(async (acceptedFiles: FileList | null) => {
+    if (googleConnected === false) return;
     const file = acceptedFiles?.[0];
     if (!file) return;
 
@@ -80,16 +89,35 @@ function SingleUploadStep() {
     onDrop(e.target.files);
   };
 
+  const isDisabled = googleConnected === false;
+
   return (
-    <div>
+    <div className="space-y-4">
+      {isDisabled && (
+        <WarningPanel showIcon size="md">
+          <span>
+            Google account not connected. Upload is disabled until your admin connects Google.{" "}
+            <a
+              href="/settings/connections"
+              className="underline hover:no-underline font-medium"
+            >
+              Connect Google in Settings
+            </a>
+          </span>
+        </WarningPanel>
+      )}
       <CategoryToggle value={category} onChange={setCategory} />
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          onDrop(e.dataTransfer.files);
+          if (!isDisabled) onDrop(e.dataTransfer.files);
         }}
-        className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-[var(--neutral-300)] transition-colors"
+        className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+          isDisabled
+            ? "border-border opacity-50 cursor-not-allowed"
+            : "border-border hover:border-[var(--neutral-300)]"
+        }`}
       >
         <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
         <p className="text-muted-foreground mb-2">
@@ -102,13 +130,15 @@ function SingleUploadStep() {
           accept=".pdf"
           onChange={handleFileInput}
           className="hidden"
+          disabled={isDisabled}
         />
         <Button
           variant="outline"
           loading={isUploading}
           loadingText="Uploading..."
           type="button"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => !isDisabled && fileInputRef.current?.click()}
+          disabled={isDisabled}
         >
           Select File
         </Button>

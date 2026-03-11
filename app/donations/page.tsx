@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { ArrowLeft, Heart, Sparkles, Rainbow, ChartPie } from "lucide-react";
-import { getCharitableSummaryServer } from "@/lib/api/server";
+import { getCharitableSummaryServer, getGoogleStatusServer } from "@/lib/api/server";
 
 // Force dynamic rendering since we use cookies() in getCharitableSummaryServer
 export const dynamic = "force-dynamic";
@@ -24,6 +25,12 @@ export default async function DonationsPage() {
   } catch (error) {
     console.error("Failed to load charitable summary", error);
     fetchError = "Unable to load donation data at the moment.";
+  }
+
+  let googleConnected: boolean | null = null;
+  if (!summaryData) {
+    const googleStatus = await getGoogleStatusServer();
+    googleConnected = googleStatus?.connected ?? null;
   }
 
   const data = summaryData ?? {
@@ -54,7 +61,7 @@ export default async function DonationsPage() {
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {(fetchError || (data.total === 0 && !summaryData)) && (
           <Card className="border-[var(--warning-200)] bg-[var(--warning-50)] dark:border-[var(--warning-800)] dark:bg-[var(--warning-900)]">
-            <CardContent className="pt-4">
+            <CardContent className="pt-4 space-y-3">
               <p className="text-sm text-[var(--warning-800)] dark:text-[var(--warning-200)]">
                 <strong>Configure Charitable Ledger:</strong> Go to{" "}
                 <Link href="/settings" className="underline hover:no-underline">
@@ -62,6 +69,17 @@ export default async function DonationsPage() {
                 </Link>{" "}
                 to connect your Google Sheet and Drive folder to enable donation tracking.
               </p>
+              {googleConnected === false && (
+                <Link href="/settings/connections">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-[var(--warning-300)] hover:bg-[var(--warning-100)] dark:border-[var(--warning-800)] dark:hover:bg-[var(--warning-900)]"
+                  >
+                    Connect Google Account
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
         )}

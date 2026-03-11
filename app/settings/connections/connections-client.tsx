@@ -17,12 +17,14 @@ interface GoogleIntegrationStatus {
 
 interface ConnectionsClientProps {
   initialGoogleStatus: GoogleIntegrationStatus;
+  canManageHome: boolean;
   apiUrl: string;
   wsUrl: string;
 }
 
 export function ConnectionsClient({
   initialGoogleStatus,
+  canManageHome,
   apiUrl,
   wsUrl,
 }: ConnectionsClientProps) {
@@ -45,7 +47,6 @@ export function ConnectionsClient({
         throw new Error(payload.detail || payload.error || "Disconnect failed");
       }
 
-      // Optimistic update
       setGoogleStatus({
         ...googleStatus,
         connected: false,
@@ -85,6 +86,11 @@ export function ConnectionsClient({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Vivian needs access to Google Drive and Sheets to upload receipts, read your expense
+            ledger, and track donations.
+          </p>
+
           {googleStatus.connected ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -123,23 +129,23 @@ export function ConnectionsClient({
                   </p>
                 </div>
               )}
-              <Button
-                variant="outline"
-                onClick={handleDisconnect}
-                loading={isDisconnecting}
-                loadingText="Disconnecting..."
-                className="mt-2"
-              >
-                Disconnect Google
-              </Button>
+              {canManageHome && (
+                <Button
+                  variant="outline"
+                  onClick={handleDisconnect}
+                  loading={isDisconnecting}
+                  loadingText="Disconnecting..."
+                  className="mt-2"
+                >
+                  Disconnect Google
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Connect your Google account to enable file uploads, Google Sheets integration, and
-                Drive folder access.
-              </p>
-              <Button onClick={handleConnect}>Connect Google Account</Button>
+              {canManageHome && (
+                <Button onClick={handleConnect}>Connect Google Account</Button>
+              )}
             </div>
           )}
           {error && <p className="text-sm text-[var(--error-700)]">{error}</p>}
