@@ -178,6 +178,7 @@ export default async function HomePage() {
                     <CardHeader>
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src="/logos/mealie.svg" alt="Mealie logo" className="h-8 w-8 object-contain" />
                         </div>
                         <div>
@@ -196,6 +197,7 @@ export default async function HomePage() {
                     <CardHeader>
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src="/logos/jellyfin.svg" alt="Jellyfin logo" className="h-8 w-8 object-contain" />
                         </div>
                         <div>
@@ -214,6 +216,7 @@ export default async function HomePage() {
                     <CardHeader>
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src="/logos/immich.svg" alt="Immich logo" className="h-8 w-8 object-contain" />
                         </div>
                         <div>

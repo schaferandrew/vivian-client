@@ -83,7 +83,7 @@ function SingleUploadStep() {
     } finally {
       setUploading(false);
     }
-  }, [setStep, setTempFilePath, setUploading, setError]);
+  }, [setStep, setTempFilePath, setUploading, setError, googleConnected]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     onDrop(e.target.files);
